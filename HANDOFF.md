@@ -28,8 +28,10 @@ lab was recreated and is running. The Crossplane provider is a separate project 
 * `task release:snapshot` builds all 13 platform archives, the checksums and the manifest.
 * Public repository: https://github.com/hayone1/terraform-provider-wso2is. CI and Acceptance
   (Terraform and OpenTofu jobs) pass on `main`. The five Dependabot action bumps are merged.
-* **v0.1.0 is released** on GitHub (13 archives, signed checksums, manifest; signature verified).
-  It is listed on registry.terraform.io as `hayone1/wso2is`. The OpenTofu registry submission
+* **v0.1.1 is released** (2026-11-07, tag on `1c868f2`): 13 archives, signed checksums and the
+  manifest; signature verified with the release key. The Go proxy and registry.terraform.io
+  serve it. CI and Acceptance (Terraform and OpenTofu) passed on that commit. v0.1.0 was
+  released earlier the same day and is listed on registry.terraform.io as `hayone1/wso2is`. The OpenTofu registry submission
   was pending approval on 2026-11-07 (check https://registry.opentofu.org/v1/providers/hayone1/wso2is/versions).
 
 ## Environment
@@ -72,7 +74,9 @@ Second session on 2026-11-07, for the Crossplane provider (Upjet):
   resolve for up to an hour after a destroy (negative DNS caching). Documented in
   `deploy/README.md`.
 * Upjet's scraper reads all 52 pages in `docs/resources` without changes (checked with Upjet
-  v2.5.1, which needs Go 1.26.8).
+  v2.5.1, which needs Go 1.26.8). A separate module fetched v0.1.1 from the Go proxy, and Upjet
+  configured all 52 resources with the in-process provider; its CRD type builder passed for all
+  of them in both scopes (program in the Crossplane project's `_debug/upjet-smoke/`).
 * The Crossplane handoff moved to `/home/hayone/github/crossplane-provider-wso2is/BRIEF.md`
   (new local project with `HANDOFF.md`, `CLAUDE.md`, skills and `.env` for the lab).
 
