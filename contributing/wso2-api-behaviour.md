@@ -82,6 +82,7 @@ Contributors: when you find a new quirk, add it here with the request that shows
 | `isEnabled` is not part of the create model. | Disabled connections are patched after creation. |
 | Deleting a connection used by applications fails unless `force=true`. | `force_delete` attribute. |
 | The order of authenticators within an authentication step is not preserved (the server reorders them). | `authentication_sequence.steps[*].options` is a set. |
+| Custom authenticators (`POST /authenticators/custom`): `GET /configs/authenticators/{id}` does not return `authenticationType`. The server adds the tag `2FA` to `VERIFICATION` authenticators; `IDENTIFICATION` authenticators have only the tag `Custom`. Found 2026-11-07. | When the state has no `authentication_type` (after an import, or in Crossplane), Read derives it from the tags. A known value is never overwritten. |
 
 ## Claims (`/api/server/v1/claim-dialects`)
 

@@ -375,6 +375,8 @@ func (r *shareResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// The sharing API does not report this setting; use the default, as ImportState does.
+	tfutil.SetBoolIfNull(&state.ShareWithAll, false)
 	if !r.read(ctx, &state, &resp.Diagnostics) {
 		if !resp.Diagnostics.HasError() {
 			resp.State.RemoveResource(ctx)

@@ -148,6 +148,15 @@ func (r *templateResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// ID: <channel>/<type>/<locale>[/<application_id>].
+	if parts := tfutil.IDParts(state.ID, 3); parts != nil {
+		tfutil.SetStringIfNull(&state.Channel, parts[0])
+		tfutil.SetStringIfNull(&state.Type, parts[1])
+		tfutil.SetStringIfNull(&state.Locale, parts[2])
+		if len(parts) == 4 {
+			tfutil.SetStringIfNull(&state.ApplicationID, parts[3])
+		}
+	}
 	if !r.read(ctx, &state, &resp.Diagnostics) {
 		if !resp.Diagnostics.HasError() {
 			resp.State.RemoveResource(ctx)

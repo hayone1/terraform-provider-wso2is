@@ -201,5 +201,14 @@ func (r *customResource) read(ctx context.Context, m *customModel, diags *diag.D
 	ep := tfutil.GetMap(a, "endpoint")
 	m.EndpointURI = tfutil.GetString(ep, "uri")
 	m.EndpointAuthType = tfutil.GetString(tfutil.GetMap(ep, "authentication"), "type")
+	if !tfutil.Known(m.AuthenticationType) {
+		// The server does not return the type, but it tags VERIFICATION authenticators "2FA".
+		m.AuthenticationType = types.StringValue("IDENTIFICATION")
+		for _, tag := range tfutil.GetStrings(a, "tags") {
+			if tag == "2FA" {
+				m.AuthenticationType = types.StringValue("VERIFICATION")
+			}
+		}
+	}
 	return true
 }

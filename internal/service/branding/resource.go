@@ -72,6 +72,23 @@ func commonAttrs(c *client.Client) map[string]schema.Attribute {
 	}
 }
 
+// fillTargetFromID fills target attributes that are missing from the prior state from the
+// ID (<type>/<name>/<locale>[/<screen>]).
+func fillTargetFromID(id types.String, typ, appID, locale, screen *types.String) {
+	parts := tfutil.IDParts(id, 3)
+	if parts == nil {
+		return
+	}
+	tfutil.SetStringIfNull(typ, parts[0])
+	if parts[0] == "APP" {
+		tfutil.SetStringIfNull(appID, parts[1])
+	}
+	tfutil.SetStringIfNull(locale, parts[2])
+	if screen != nil && len(parts) > 3 {
+		tfutil.SetStringIfNull(screen, parts[3])
+	}
+}
+
 func resolveTarget(c *client.Client, typ, appID, locale, screen types.String, diags *diag.Diagnostics) target {
 	t := target{Type: typ.ValueString(), Locale: locale.ValueString(), Screen: screen.ValueString()}
 	if t.Type == "APP" {
@@ -156,6 +173,7 @@ func (r *preferenceResource) Create(ctx context.Context, req resource.CreateRequ
 func (r *preferenceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state preferenceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	fillTargetFromID(state.ID, &state.Type, &state.ApplicationID, &state.Locale, nil)
 	t := resolveTarget(r.client, state.Type, state.ApplicationID, state.Locale, types.StringNull(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -318,6 +336,7 @@ func (r *textResource) Create(ctx context.Context, req resource.CreateRequest, r
 func (r *textResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state textModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	fillTargetFromID(state.ID, &state.Type, &state.ApplicationID, &state.Locale, &state.Screen)
 	t := resolveTarget(r.client, state.Type, state.ApplicationID, state.Locale, state.Screen, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return

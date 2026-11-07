@@ -284,6 +284,11 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// ID: <type>/<name>.
+	if parts := tfutil.IDParts(state.ID, 2); parts != nil {
+		tfutil.SetStringIfNull(&state.Type, parts[0])
+		tfutil.SetStringIfNull(&state.Name, strings.Join(parts[1:], "/"))
+	}
 	if !r.read(ctx, &state, &resp.Diagnostics) {
 		if !resp.Diagnostics.HasError() {
 			resp.State.RemoveResource(ctx)

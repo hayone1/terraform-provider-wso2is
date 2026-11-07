@@ -103,6 +103,20 @@ func (r *connectorResource) Read(ctx context.Context, req resource.ReadRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if state.CategoryID.ValueString() == "" {
+		// The prior state can hold only the ID and the arguments (see tfutil.SetStringIfNull).
+		cat, id, err := r.client.FindGovernanceConnector(ctx, state.ID.ValueString())
+		if err != nil {
+			if client.IsNotFound(err) {
+				resp.State.RemoveResource(ctx)
+				return
+			}
+			tfutil.AddAPIError(&resp.Diagnostics, "find governance connector", err)
+			return
+		}
+		state.ID, state.CategoryID = types.StringValue(id), types.StringValue(cat)
+	}
+	tfutil.SetBoolIfNull(&state.RestoreOnDestroy, true)
 	if !r.read(ctx, &state, &resp.Diagnostics) {
 		if !resp.Diagnostics.HasError() {
 			resp.State.RemoveResource(ctx)
