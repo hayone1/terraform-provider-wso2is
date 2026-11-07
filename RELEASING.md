@@ -25,9 +25,10 @@ Registry does not accept ECC keys.
 
 A key already exists for this repository:
 
-* Fingerprint: `9FBCFD28D9601DD6020039ACA4832BD8A7ED2400`
-* Type: RSA 4096, signing only. It expires on 2029-11-06.
-* User ID: `Boluwatife Morawo (terraform-provider-wso2is release signing) <28967086+hayone1@users.noreply.github.com>`
+* Fingerprint: `EC973EEC56F04F2C92EE43D953D83AB409F9A781`
+* Type: RSA. The same key signs the maintainer's terraform-provider-contabo releases.
+* User ID: `hayone1 (terraform-provider-contabo releases)`
+* Revocation certificate: `.secrets/release-signing-key.revocation.rev`
 
 The private key and its passphrase are in the maintainer's git-ignored `.secrets/` folder, in the `.env` file (`GPG_PRIVATE_KEY`,
 `PASSPHRASE` and `GPG_FINGERPRINT`) and in the maintainer's local GPG keyring. Keep a backup of
@@ -76,6 +77,9 @@ the `main` branch.
 
 ### 4. Register the key with the Terraform Registry
 
+This key already signs terraform-provider-contabo. If you added it to the `hayone1` namespace
+for that provider, skip this step.
+
 1. Go to <https://registry.terraform.io/> and sign in with your GitHub account.
 2. Open **User Settings > Signing Keys**.
 3. Select the `hayone1` namespace, and paste the output of `task release:public-key`.
@@ -89,7 +93,8 @@ closes submissions that come from the `gh` CLI or the GitHub API.
 1. Open
    [Submit new Provider Signing Key](https://github.com/opentofu/registry/issues/new?assignees=&labels=provider-key%2Csubmission&projects=&template=provider_key.yml&title=Provider+Key%3A+).
    * **Provider Namespace:** `hayone1`
-   * **Provider Name:** `wso2is`
+   * **Provider Name:** `wso2is` (skip this form if the key was added for the whole `hayone1`
+     namespace when you published terraform-provider-contabo)
    * **Public Membership:** tick the box. (`hayone1` is your user account, so you are its owner.)
    * **Provider GPG Key:** paste the output of `task release:public-key`.
 2. Open

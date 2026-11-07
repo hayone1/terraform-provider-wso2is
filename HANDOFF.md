@@ -41,8 +41,7 @@ release signing key and publishing guide.
   `GPG_PRIVATE_KEY`). The signing key is also in `.secrets/` (git-ignored files: private key, public key, passphrase) and in the maintainer's local GPG keyring.
   `_debug/env.backup-2026-11-07` is a backup of the old `.env` (old lab keys); delete it once
   the maintainer has confirmed that nothing is missing.
-* **Release key**: RSA 4096, fingerprint `9FBCFD28D9601DD6020039ACA4832BD8A7ED2400`, expires
-  2029-11-06. Public key: `task release:public-key` (copy in `_debug/release/signing-key.asc`).
+* **Release key**: RSA (shared with terraform-provider-contabo), fingerprint `EC973EEC56F04F2C92EE43D953D83AB409F9A781`. Public key: `task release:public-key` (copy in `.secrets/release-signing-key.public.asc`).
 
 ## Done this session
 
