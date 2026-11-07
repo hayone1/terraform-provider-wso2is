@@ -54,6 +54,7 @@ Contributors: when you find a new quirk, add it here with the request that shows
 | `requiresAuthorization` cannot be changed after creation (`PATCH` rejects it). | Changing it replaces the API resource. |
 | `PUT /api-resources/{id}/scopes` replaces the whole scope set, including display name changes. | Scope changes are applied with one `PUT`. |
 | Scope names are unique per tenant (HTTP 409 across API resources). | Documented. |
+| Authorizing an application for the User Sharing API (`/o/api/server/v1/users`) also authorizes it for the User Sharing API V2 (`/o/api/server/v2/users`). A later `POST /applications/{id}/authorized-apis` for version 2 answers 409 `APP-60509` ("API resource already authorized"). Found 2026-11-07 by authorizing the organization APIs one by one on 7.3.0. | Documented; `wso2is_application_authorized_api` for version 2 needs an import (ID `<application_id>/<api_resource_id>`). `acctest.TestOrganization` ignores conflicts. |
 
 ## Users, groups and roles (SCIM 2.0)
 
