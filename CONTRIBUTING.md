@@ -81,6 +81,7 @@ leftovers.
 ## Repository layout
 
 ```
+provider/                 public Go package that returns the provider (for Crossplane and other programs)
 internal/provider/        provider configuration and the list of resources (registry.go)
 internal/client/          HTTP client: sign-in, retries, errors, JSON helpers, API calls
 internal/tfutil/          schema helpers, plan modifiers and conversions shared by resources
@@ -114,7 +115,8 @@ specifications are incomplete and sometimes wrong, so the source code is often t
 2. **Write the resource** in `internal/service/<area>/`, and register it in
    `internal/provider/registry.go`. Follow the patterns below.
 3. **Write an acceptance test.** The test must create the object, update it (including removing
-   optional settings), import it with `ImportStateVerify`, and destroy it. Use
+   optional settings), import it with `ImportStateVerify`, and destroy it. Run it with
+   `acctest.Test`, not `resource.Test` (see "Read from the ID" below). Use
    `acctest.RandomName` for names. Add the resource to
    `TestAccResources_missingObjectIsNotFound` in `internal/provider/notfound_test.go`.
 4. **Add an example** in `examples/resources/<type>/resource.tf` and `import.sh`. Then run
@@ -148,6 +150,15 @@ specifications are incomplete and sometimes wrong, so the source code is often t
 * **Missing objects.** `Read` must remove the resource from the state when the object is gone.
   Some endpoints do not answer 404 for a missing object. Find out what they answer, and handle it
   (see `client.ApplicationMissing`).
+* **Read from the ID.** `Read` must find the object with only the ID and the arguments in the
+  prior state. Computed attributes, and attributes that have a default, can be empty. This
+  happens after an import, and always in Crossplane: Upjet runs this provider inside a Crossplane
+  provider, and it builds the prior state from the ID and the managed resource's spec. Take the
+  missing values from the ID (`tfutil.IDParts` and `tfutil.SetStringIfNull`), or look them up.
+  `acctest.Test` checks this after every test step. It fails when `Read` returns an error, reports
+  the object as missing, or leaves a computed attribute empty. It logs other differences with the
+  prefix `upjet read:`. Tests whose resources use several provider configurations pass
+  `acctest.UpjetReadProviderConfig` or `acctest.SkipUpjetRead`.
 * **Lookups by name.** Use `client.FindByEq`. It quotes the value, so names with spaces or with the
   words "and" and "or" work, and it falls back to a full list when the server cannot filter.
 * **Errors** go through `tfutil.AddAPIError`, which adds hints for sign-in and TLS problems. When
@@ -157,6 +168,21 @@ specifications are incomplete and sometimes wrong, so the source code is often t
   Tests with more than one `wso2is` provider block use `acctest.ExternalProviders`.
 
 The reasons behind the overall design are in [`contributing/adr`](contributing/adr).
+
+### The public `provider` package
+
+Other Go programs use `provider.New` to run the provider in their own process. The Crossplane
+provider for WSO2 Identity Server does this. Keep the package's API stable, and keep the
+provider safe to use in this way:
+
+* The provider instance must not change after it is created. `Configure` puts the API client
+  into the configure response, not into the provider struct. One instance can serve many
+  configurations at the same time.
+* State that should be shared in a process lives in package variables in `internal/client`:
+  the token caches (`sharedTokenCache`), the HTTP transports (`sharedTransport`) and the
+  tenant-wide locks (`LockTenantConfig`).
+* `TestNew_servesValidSchemas` in `provider/provider_test.go` counts the resources and data
+  sources. Update the count when you add one.
 
 ## Pull requests
 

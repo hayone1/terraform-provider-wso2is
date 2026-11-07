@@ -90,6 +90,13 @@ For a setup that is closer to production, the [`deploy/`](deploy/) folder has Ku
 with PostgreSQL and TLS. It also lists the server settings that the provider benefits from, such as
 allowing tenant and flow deletion.
 
+## Use the provider from Go
+
+Other Go programs can run the provider in their own process. The package
+`github.com/hayone1/terraform-provider-wso2is/provider` has a `New` function that returns the
+provider. A Crossplane provider for WSO2 Identity Server, generated with
+[Upjet](https://github.com/crossplane/upjet), uses it. Terraform and OpenTofu do not need it.
+
 ## Contributing
 
 Bug reports, server quirks that you ran into, and pull requests are welcome.

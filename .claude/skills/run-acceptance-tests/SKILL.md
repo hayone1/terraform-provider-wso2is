@@ -14,7 +14,9 @@ Read `HANDOFF.md` first: it says whether the lab is running and what was last ve
 - **Hetzner lab** (maintainers, needs `.env`): `task lab:up` creates the server and deploys WSO2
   with PostgreSQL behind a Let's Encrypt certificate on `https://$WSO2_HOSTNAME`; then
   `task testacc -- <go test args>`. `task lab:status`, `task lab:logs`, `task lab:destroy`
-  (the server costs money while it exists). Details: `deploy/README.md`.
+  (the server costs money while it exists). Details: `deploy/README.md`. If the lab's name does
+  not resolve right after a new `task lab:up`, your DNS cache still has the old "no such name"
+  answer (up to an hour); SSH tasks use the IP and still work.
 - **Any server**: set `WSO2IS_BASE_URL`, `WSO2IS_USERNAME`, `WSO2IS_PASSWORD` (and
   `WSO2IS_INSECURE_SKIP_VERIFY=true` for self-signed certificates), then `task testacc -- ...`.
 - User store tests add users only when `WSO2IS_TEST_JDBC_URL` points at a database the server
@@ -42,6 +44,15 @@ Missing-object handling for every resource: `task testacc -- -run TestAccResourc
   `contributing/wso2-api-behaviour.md`).
 - **Flaky results under parallel runs**: tenant-wide settings changed by another test (use
   `acctest.TestTenant`), or a server race (retry with `-p 1` to confirm, then record it).
+- **"upjet read of <address>: ..."**: the Upjet read check in `acctest.Test` rebuilt the prior
+  state from the ID and the arguments only, and `Read` failed, reported the object as missing,
+  or left a computed attribute empty. Fill the missing values from the ID in `Read`. Lines that
+  start with `upjet read:` are only logged: they list arguments that `Read` does not restore,
+  which is expected for optional values the provider tracks only when set. A step whose `Check`
+  deletes an object out of band must set `ExpectNonEmptyPlan` (the check then skips the step).
+- **"Failed to query available provider packages ... hashicorp/wso2is" in an import step with
+  its own `Config`**: add `terraform { required_providers { wso2is = { source = "hayone1/wso2is" } } }`
+  to that configuration.
 - **OpenTofu "Invalid provider namespace"**: run through Task, which sets
   `TF_ACC_PROVIDER_NAMESPACE` and `TF_ACC_PROVIDER_HOST`.
 

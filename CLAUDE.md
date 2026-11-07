@@ -24,6 +24,8 @@ Use Task, not make or ad-hoc scripts (`task --list`):
 ## Where things are
 
 - `internal/provider/registry.go`: every resource and data source is registered here
+- `provider/`: public package (`provider.New`) that other Go programs embed; the Crossplane
+  provider (Upjet) uses it. Keep its API stable.
 - `internal/service/<area>/`: resources, data sources and their acceptance tests
 - `internal/client/`: HTTP client, auth, errors, `MergeJSON`/`DiffJSON`/`CloneJSON`, `FindByEq`
 - `internal/tfutil/`: schema helpers (`OC*`, defaults, `tfutil.Object`), plan modifiers
@@ -58,5 +60,11 @@ Use Task, not make or ad-hoc scripts (`task --list`):
 - Name lookups go through `client.FindByEq` (quoted values; names with "and"/"or" break filters).
 - Tests that change tenant-wide behaviour run in `acctest.TestTenant`; tests with several
   provider blocks use `acctest.ExternalProviders`.
+- Run acceptance tests with `acctest.Test`, never `resource.Test`. It also reads every resource
+  the way Crossplane's Upjet does (only the ID and the arguments in the prior state).
+- `Read` must work when computed attributes and attributes with defaults are empty: fill them
+  from the ID (`tfutil.IDParts`, `tfutil.SetStringIfNull`) or look them up.
+- The provider struct never changes after `New`; state shared in a process (token caches,
+  transports, tenant locks) lives in package variables in `internal/client`.
 - A change is done when its acceptance test passes against a real server, `task lint` is
   clean, docs are regenerated and any new quirk is recorded.

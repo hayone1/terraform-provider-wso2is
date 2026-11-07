@@ -5,37 +5,41 @@ before you stop (see the `session-handoff` skill). Never put secret values here.
 
 ## Last updated
 
-2026-11-07: release preparation. New Hetzner lab, full test runs, bug fixes, docs rewrite,
-release signing key and publishing guide.
+2026-11-07 (second session): v0.1.1 prepares the provider for Crossplane's Upjet. The Hetzner
+lab was recreated and is running. The Crossplane provider is a separate project in
+`/home/hayone/github/crossplane-provider-wso2is` (start with its `BRIEF.md`).
 
 ## State
 
 * 52 resources and 12 data sources. Build, vet, unit tests, `task lint` (0 issues), docs
   validation and `task examples:validate` (Terraform and OpenTofu) pass.
-* Full acceptance suite against the Hetzner lab (WSO2 IS 7.3.0, PostgreSQL), Terraform 1.14:
-  `task testacc -- -p 1 ./...` passed on 2026-11-07: 55 tests and 33 sub-tests in 24 packages,
-  0 failures (log: `_debug/lab-regression-final.log`).
-* OpenTofu 1.13: the identity, API resource, lookup, organization and provider (not-found)
-  packages pass, and all 69 examples validate.
+* Full acceptance suite against the Hetzner lab (WSO2 IS 7.3.0, PostgreSQL), Terraform 1.14,
+  with the Upjet read check: `task testacc -- -p 1 -count=1 -v ./...` passed on 2026-11-07:
+  63 tests and 33 sub-tests in 26 packages, 0 failures, 0 skips (log:
+  `_debug/lab-upjet-full.log`). The same suite passed against the local Docker server.
+* OpenTofu 1.13: the branding, config, governance, notification, scripting, authenticator,
+  organization and provider packages pass against Docker (2026-11-07, second session), and all
+  69 examples validate.
 * Fresh-copy check (only the files that would be committed, `cp example.env .env`, Docker
   server): build, unit tests, `task wso2:up` and the identity, lookup and not-found acceptance
   tests pass. The Getting started guide applies cleanly (8 objects), the next plan is empty,
   the Step 5 change plans one update, and destroy removes everything. This check found that
   `.gitignore` excluded `internal/service/idp/testdata/cert.pem` (fixed).
 * `task release:snapshot` builds all 13 platform archives, the checksums and the manifest.
-* Pushed to https://github.com/hayone1/terraform-provider-wso2is (public). Release secrets are
-  uploaded. The maintainer only does the registry steps in [RELEASING.md](RELEASING.md).
+* Public repository: https://github.com/hayone1/terraform-provider-wso2is. CI and Acceptance
+  (Terraform and OpenTofu jobs) pass on `main`. The five Dependabot action bumps are merged.
+* **v0.1.0 is released** on GitHub (13 archives, signed checksums, manifest; signature verified).
+  It is listed on registry.terraform.io as `hayone1/wso2is`. The OpenTofu registry submission
+  was pending approval on 2026-11-07 (check https://registry.opentofu.org/v1/providers/hayone1/wso2is/versions).
 
 ## Environment
 
-* **Hetzner lab**: one `cpx32` server (4 vCPU, 8 GB) named `wso2is-lab` in `nbg1`, Ubuntu 24.04,
-  k3s v1.37.2. Created by `deploy/hetzner` (Terraform state is local in that folder and
-  git-ignored). The `cx43` type was sold out in every location on 2026-11-07.
-  * WSO2: <https://wso2is.lab.software-cloud.com> (Let's Encrypt). Console at `/console`.
-  * DNS: `lab.software-cloud.com` and `*.lab.software-cloud.com` point at the server (zone
-    `software-cloud.com` in the same Hetzner project).
-  * It costs about EUR 42 a month while it exists. `task lab:destroy` deletes it;
-    `task lab:up` recreates everything in about ten minutes.
+* **Hetzner lab: running** since 2026-11-07 (recreated for the Upjet work, IP 2.31.91.77). It is
+  a `cpx32` (4 vCPU, 8 GB, about EUR 42 a month) in `nbg1`, Ubuntu 24.04, k3s, WSO2 at
+  <https://wso2is.lab.software-cloud.com>. The Crossplane project uses it for its tests (its
+  `.env` has the admin credentials). `task lab:destroy` deletes it; ask the maintainer first.
+  `task lab:up -- -auto-approve` recreates it in about ten minutes. Without it, use
+  `task wso2:up` (Docker).
 * **Secrets** live in `.env` (git-ignored): `HCLOUD_TOKEN`, the `WSO2_*` passwords, the test
   JDBC settings, and the release signing key (`GPG_FINGERPRINT`, `PASSPHRASE`,
   `GPG_PRIVATE_KEY`). The signing key is also in `.secrets/` (git-ignored files: private key, public key, passphrase) and in the maintainer's local GPG keyring.
@@ -45,35 +49,45 @@ release signing key and publishing guide.
 
 ## Done this session
 
-* Lab moved from the old IBM server and upstream cluster to Hetzner: `deploy/hetzner`
-  (server, firewall, DNS), `deploy/k8s/base/certificates.yaml` (internal CA with cert-manager),
-  `deploy/k8s/platform` (Let's Encrypt issuers), `deploy/k8s/overlays/lab` (Traefik ingress),
-  `taskfiles/lab.yml` rewritten. The AppArmor workaround is gone (Ubuntu 24.04).
-* Bug fixes (all with tests):
-  * Name lookups failed for names with "and"/"or": `client.FindByEq`
-    (`internal/client/filter.go`), test `TestAccLookupDataSources_namesWithFilterKeywords`.
-  * Deleted applications were not detected by `wso2is_application_authorized_api` and
-    `wso2is_application_share`: `client.ApplicationMissing`; new test
-    `TestAccResources_missingObjectIsNotFound` (`internal/provider/notfound_test.go`) imports a
-    missing ID for all 29 object resources.
-  * Retry backoff overflow with a large `max_retries`.
-* OpenTofu support in the tooling: `TF_CLI=tofu` for `task testacc*`, `task examples:validate`
-  and `task lab:infra`; the acceptance workflow runs Terraform and OpenTofu. The test provider is
-  registered as `hayone1/wso2is` in `internal/acctest` (OpenTofu needs a real namespace).
-* Docs rewritten in plain, tutorial-style English: all guides, the provider index, README,
-  CONTRIBUTING, deploy/README, every resource and data source description, and the hard-to-read
-  attribute descriptions. Style rules: `contributing/docs-style.md`.
-* New: `RELEASING.md`, `HANDOFF.md`, skills `session-handoff` and `write-docs`; the other skills,
-  CLAUDE.md, `example.env` and `.env` updated. Release tasks: `task release:secrets`,
-  `task release:public-key`, `task release:snapshot`.
+Second session on 2026-11-07, for the Crossplane provider (Upjet):
+
+* Public package `provider/` (`provider.New`, `provider.Address`); `main.go` uses it.
+  `provider/provider_test.go` checks the schemas through the plugin protocol and counts the
+  resources (52) and data sources (12).
+* `internal/client`: OAuth tokens are cached per server, tenant, organization, client and scopes
+  for the whole process (`sharedTokenCache` in `auth.go`), and HTTP transports per TLS setting
+  (`sharedTransport` in `client.go`). Upjet creates a provider server for every reconcile, so
+  each reconcile used to request a token. Unit tests in `internal/client/auth_test.go`.
+* Upjet read check: `acctest.Test` (`internal/acctest/upjet.go`) replaces `resource.Test` in all
+  43 test cases. After each step it rebuilds every resource's prior state from the ID and the
+  arguments (computed attributes cleared), calls `ReadResource` through the protocol, and fails
+  on errors, "missing" answers or unrestored computed attributes.
+* Read fixes found by the check (`tfutil.IDParts`, `tfutil.SetStringIfNull`,
+  `tfutil.SetBoolIfNull` in `internal/tfutil/fill.go`): branding preference and text,
+  notification template and secret take empty identifying attributes from the ID; governance
+  connector looks up its category; custom authenticator derives `authentication_type` from the
+  server's `2FA` tag; application share and governance connector fill their defaults.
+* New test `TestAccOAuth2IssuerUsageScope` (in a test tenant); this resource had no test.
+* Lab tasks connect over SSH to the IP from the Terraform state, because the lab's name may not
+  resolve for up to an hour after a destroy (negative DNS caching). Documented in
+  `deploy/README.md`.
+* Upjet's scraper reads all 52 pages in `docs/resources` without changes (checked with Upjet
+  v2.5.1, which needs Go 1.26.8).
+* The Crossplane handoff moved to `/home/hayone/github/crossplane-provider-wso2is/BRIEF.md`
+  (new local project with `HANDOFF.md`, `CLAUDE.md`, skills and `.env` for the lab).
+
+The first session of 2026-11-07 (v0.1.0) moved the lab to Hetzner, fixed the name filters, the
+missing-application handling and the retry backoff, added OpenTofu to the tooling and CI,
+rewrote the docs, and added `RELEASING.md`, `HANDOFF.md` and the `session-handoff` and
+`write-docs` skills.
 
 ## Open items
 
-1. Maintainer: publish (RELEASING.md): commit, create the public GitHub repository, run
-   `task release:secrets`, register the key with both registries, tag `v0.1.0`.
-2. After the first push: check that the CI and Acceptance workflows pass on GitHub (they have
-   only run locally so far).
-3. Optional: decide whether to keep the lab running between releases.
+1. Maintainer: finish the OpenTofu registry submission (provider form, and the key form if the
+   key is not registered for the whole `hayone1` namespace). See RELEASING.md step 5.
+2. Crossplane provider: built in `/home/hayone/github/crossplane-provider-wso2is`. Fix Terraform
+   provider bugs that it finds here, with tests, and release a new version.
+3. Destroy the lab (`task lab:destroy`) when the Crossplane work no longer needs it.
 
 ## Known problems
 

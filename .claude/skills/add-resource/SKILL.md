@@ -46,6 +46,9 @@ Read `HANDOFF.md` first if you have not done so in this session.
 - `Read` removes the resource from state when the object is gone, whatever the server answers
   for a missing object (404, or 400/200 below a deleted parent: see `client.ApplicationMissing`).
   `Delete` treats "already gone" as success.
+- `Read` works with only the ID and the arguments in the prior state (Terraform after an import,
+  and Crossplane's Upjet always). Computed attributes and attributes with defaults can be null:
+  fill them from the ID (`tfutil.IDParts`, `tfutil.SetStringIfNull`) or look them up.
 - Lookups by name use `client.FindByEq` and compare results exactly.
 - Errors through `tfutil.AddAPIError`; add an actionable diagnostic when the server's message is
   unhelpful.
@@ -53,8 +56,10 @@ Read `HANDOFF.md` first if you have not done so in this session.
 
 ## 4. Test
 
-- Acceptance test in the same package: create, update (including removing optional values),
-  `ImportState` + `ImportStateVerify`, destroy (add `CheckDestroy` when destroy restores state).
+- Acceptance test in the same package, run with `acctest.Test` (never `resource.Test`): create,
+  update (including removing optional values), `ImportState` + `ImportStateVerify`, destroy (add
+  `CheckDestroy` when destroy restores state). `acctest.Test` also reads every resource the way
+  Upjet does; with a custom provider block pass `acctest.UpjetReadProviderConfig(...)`.
 - Add a case to `TestAccResources_missingObjectIsNotFound` in
   `internal/provider/notfound_test.go` (imports an ID that does not exist).
 - Names from `acctest.RandomName` so `task sweep` can clean up.

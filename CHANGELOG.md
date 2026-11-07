@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.1.1 (2026-11-07)
+
+This release prepares the provider for use inside other programs, such as a Crossplane provider
+that Upjet generates. Terraform users get the bug fixes below.
+
+FEATURES:
+
+* New Go package `github.com/hayone1/terraform-provider-wso2is/provider`. Its `New` function
+  returns the provider, so other Go programs can run it in their own process.
+
+BUG FIXES:
+
+* `wso2is_branding_preference`, `wso2is_branding_text`, `wso2is_notification_template` and
+  `wso2is_secret`: reading failed, or reported the object as missing, when the state had only the
+  ID. The attributes that have a default (`type`, `locale` and others) are now taken from the ID
+  when they are empty.
+* `wso2is_governance_connector`: reading failed when the state had no `category_id`. The provider
+  now looks the category up.
+* `wso2is_custom_authenticator`: `authentication_type` is now read from the server after an
+  import. The server marks `VERIFICATION` authenticators with the tag `2FA`.
+
+IMPROVEMENTS:
+
+* Access tokens are shared by all provider instances in one process that use the same server,
+  tenant, organization, client and scopes. HTTP connections are shared by all instances with the
+  same TLS settings. A program that creates a new provider instance for each operation (Crossplane
+  does) no longer requests a new token and opens new connections every time.
+* Tests: every acceptance test now also reads each resource the way Upjet does: from the ID and
+  the arguments only. A new test covers `wso2is_oauth2_issuer_usage_scope`.
+
 ## 0.1.0 (2026-11-07)
 
 First release, developed and tested against WSO2 Identity Server 7.3.0.

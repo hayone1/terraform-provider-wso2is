@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 
-	"github.com/hayone1/terraform-provider-wso2is/internal/provider"
+	"github.com/hayone1/terraform-provider-wso2is/provider"
 )
 
 // Set by goreleaser.
@@ -21,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	err := providerserver.Serve(context.Background(), provider.New(version), providerserver.ServeOpts{
-		Address: "registry.terraform.io/hayone1/wso2is",
+		Address: provider.Address,
 		Debug:   debug,
 	})
 	if err != nil {
