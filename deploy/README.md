@@ -83,6 +83,13 @@ This one command runs these steps in order:
 The first run takes about ten minutes. `kubectl` reaches the cluster through an SSH tunnel on
 `localhost:16443`, which `task lab:tunnel` opens. The Kubernetes API is never open to the internet.
 
+The SSH tasks connect to the server's IP address, which they read from the Terraform state. They
+do not use the lab's DNS name, for this reason: when you create the lab again less than an hour
+after `task lab:destroy`, your computer may still remember that the name did not exist. DNS
+resolvers keep such "no such name" answers for up to an hour (the zone's SOA setting). If
+`https://$WSO2_HOSTNAME` does not resolve on your computer after `task lab:up`, wait, or clear
+your DNS cache. On Windows and WSL, run `ipconfig /flushdns` in a Windows terminal.
+
 ### Use the lab
 
 ```shell

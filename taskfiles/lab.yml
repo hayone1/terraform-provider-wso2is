@@ -18,6 +18,10 @@ vars:
   # SSH key that may log in to the server as root (the .pub file must exist next to it).
   LAB_SSH_KEY: '{{.LAB_SSH_KEY | default (printf "%s/.ssh/id_ed25519" (env "HOME"))}}'
   SSH: ssh -i {{.LAB_SSH_KEY}} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile={{.LAB_DIR}}/known_hosts
+  # SSH connects to the server's IP address from the Terraform state, not to its name. A
+  # lab created again soon after task lab:destroy may not resolve for up to an hour,
+  # because DNS resolvers remember that the name did not exist.
+  LAB_HOST_CMD: '{{.TF_CLI}} -chdir={{.TF_DIR}} output -raw ipv4_address 2>/dev/null || echo {{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
 
 env:
   KUBECONFIG: '{{.LAB_KUBECONFIG}}'
@@ -54,7 +58,7 @@ tasks:
   ready:
     desc: Wait until cloud-init has installed k3s on the server.
     vars:
-      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+      LAB_HOST: {sh: '{{.LAB_HOST_CMD}}'}
     cmds:
       - mkdir -p {{.LAB_DIR}}
       - cmd: until {{.SSH}} -o ConnectTimeout=5 -o BatchMode=yes root@{{.LAB_HOST}} test -f /var/lib/cloud/k3s-ready 2>/dev/null; do echo "waiting for k3s on {{.LAB_HOST}}"; sleep 10; done
@@ -78,7 +82,7 @@ tasks:
   ssh:
     desc: 'Run a command on the lab server. Example: task lab:ssh -- uptime'
     vars:
-      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+      LAB_HOST: {sh: '{{.LAB_HOST_CMD}}'}
     cmds:
       - mkdir -p {{.LAB_DIR}}
       - '{{.SSH}} root@{{.LAB_HOST}} {{.CLI_ARGS}}'
@@ -86,7 +90,7 @@ tasks:
   kubeconfig:
     desc: Fetch the k3s kubeconfig. kubectl reaches the API through an SSH tunnel (task lab:tunnel).
     vars:
-      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+      LAB_HOST: {sh: '{{.LAB_HOST_CMD}}'}
     status:
       - test -s {{.LAB_KUBECONFIG}}
     cmds:
@@ -98,7 +102,7 @@ tasks:
     desc: Open the SSH tunnel to the k3s API on localhost:16443 (does nothing when it is already open).
     deps: [kubeconfig]
     vars:
-      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+      LAB_HOST: {sh: '{{.LAB_HOST_CMD}}'}
     status:
       - kubectl get --raw /readyz --request-timeout=5s
     cmds:
@@ -199,7 +203,7 @@ tasks:
     desc: Show the mail WSO2 sent (Mailpit) on http://localhost:8025. Press Ctrl+C to stop.
     deps: [tunnel]
     vars:
-      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+      LAB_HOST: {sh: '{{.LAB_HOST_CMD}}'}
       CLUSTER_IP:
         sh: kubectl -n {{.NAMESPACE}} get service mailpit -o jsonpath='{.spec.clusterIP}'
     cmds:
@@ -228,7 +232,7 @@ tasks:
     deps: [tunnel]
     vars:
       VERSIONS: '{{.VERSIONS | default "7.2.0"}}'
-      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+      LAB_HOST: {sh: '{{.LAB_HOST_CMD}}'}
     cmds:
       - for: { var: VERSIONS }
         cmd: >-
