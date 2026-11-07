@@ -9,8 +9,10 @@ package client
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -95,19 +97,10 @@ func New(cfg Config) (*Client, error) {
 	}
 	u.Path = ""
 
-	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: cfg.InsecureSkipVerify} //nolint:gosec // opt-in for lab servers
-	if cfg.CACertPEM != "" {
-		pool, err := x509.SystemCertPool()
-		if err != nil || pool == nil {
-			pool = x509.NewCertPool()
-		}
-		if !pool.AppendCertsFromPEM([]byte(cfg.CACertPEM)) {
-			return nil, errors.New("ca certificate: no PEM certificates found")
-		}
-		tlsCfg.RootCAs = pool
+	transport, err := sharedTransport(cfg.InsecureSkipVerify, cfg.CACertPEM)
+	if err != nil {
+		return nil, err
 	}
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = tlsCfg
 
 	timeout := cfg.Timeout
 	if timeout <= 0 {
@@ -151,6 +144,40 @@ func (c *Client) WithBasicAuth(tenantDomain, username, password string) *Client 
 		userAgent:    c.userAgent,
 		unavailable:  c.unavailable,
 	}
+}
+
+var (
+	transportsMu sync.Mutex
+	transports   = map[string]*http.Transport{}
+)
+
+// sharedTransport returns the HTTP transport for the given TLS settings. Clients with the
+// same settings share one transport and therefore one connection pool. This matters when a
+// program creates many short-lived clients, as Crossplane does for every reconcile: each
+// new transport would open new TLS connections and leave its idle connections behind.
+func sharedTransport(insecureSkipVerify bool, caCertPEM string) (*http.Transport, error) {
+	sum := sha256.Sum256([]byte(caCertPEM))
+	key := strconv.FormatBool(insecureSkipVerify) + "|" + hex.EncodeToString(sum[:])
+	transportsMu.Lock()
+	defer transportsMu.Unlock()
+	if t, ok := transports[key]; ok {
+		return t, nil
+	}
+	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: insecureSkipVerify} //nolint:gosec // opt-in for lab servers
+	if caCertPEM != "" {
+		pool, err := x509.SystemCertPool()
+		if err != nil || pool == nil {
+			pool = x509.NewCertPool()
+		}
+		if !pool.AppendCertsFromPEM([]byte(caCertPEM)) {
+			return nil, errors.New("ca certificate: no PEM certificates found")
+		}
+		tlsCfg.RootCAs = pool
+	}
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.TLSClientConfig = tlsCfg
+	transports[key] = t
+	return t, nil
 }
 
 var (

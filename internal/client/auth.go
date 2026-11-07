@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -53,14 +55,19 @@ func newAuthenticator(c *Client, cfg Config) (authenticator, error) {
 		scopes = DefaultScopes
 	}
 
+	newClientCredentials := func() *clientCredentials {
+		return &clientCredentials{c: c, clientID: cfg.ClientID, clientSecret: cfg.ClientSecret, scopes: scopes,
+			cache: sharedTokenCache("client_credentials", c.baseURL.String(), c.tenantDomain, "", cfg.ClientID, cfg.ClientSecret, scopes)}
+	}
+
 	if cfg.OrganizationID != "" {
 		switch {
 		case hasToken:
 			// The caller supplied a token already issued for the organization.
 			return &staticToken{token: cfg.AccessToken}, nil
 		case hasClient:
-			root := &clientCredentials{c: c, clientID: cfg.ClientID, clientSecret: cfg.ClientSecret, scopes: scopes}
-			return &orgSwitch{root: root, c: c, clientID: cfg.ClientID, clientSecret: cfg.ClientSecret, scopes: scopes, orgID: cfg.OrganizationID}, nil
+			return &orgSwitch{root: newClientCredentials(), c: c, clientID: cfg.ClientID, clientSecret: cfg.ClientSecret, scopes: scopes, orgID: cfg.OrganizationID,
+				cache: sharedTokenCache("organization_switch", c.baseURL.String(), c.tenantDomain, cfg.OrganizationID, cfg.ClientID, cfg.ClientSecret, scopes)}, nil
 		default:
 			return nil, errors.New("organization_id needs client_id/client_secret of an application allowed to use the organization_switch grant, or an access_token issued for that organization; basic authentication cannot manage sub-organizations")
 		}
@@ -70,7 +77,7 @@ func newAuthenticator(c *Client, cfg Config) (authenticator, error) {
 	case hasBasic:
 		return &basicAuth{username: cfg.Username, password: cfg.Password}, nil
 	case hasClient:
-		return &clientCredentials{c: c, clientID: cfg.ClientID, clientSecret: cfg.ClientSecret, scopes: scopes}, nil
+		return newClientCredentials(), nil
 	default:
 		return &staticToken{token: cfg.AccessToken}, nil
 	}
@@ -92,7 +99,35 @@ func (a *staticToken) apply(_ context.Context, r *http.Request) error {
 }
 func (a *staticToken) invalidate() bool { return false }
 
-// tokenCache holds one bearer token and refreshes it shortly before it expires.
+var (
+	tokenCachesMu sync.Mutex
+	tokenCaches   = map[string]*tokenCache{}
+)
+
+// sharedTokenCache returns the token cache for one set of credentials. Clients with the
+// same server, tenant, organization, client and scopes share the cache, so a new client
+// reuses a valid token instead of requesting another one. Crossplane creates a new
+// provider, and so a new client, for every reconcile. The key holds a hash of the secret,
+// so a changed secret gets a new cache.
+func sharedTokenCache(grant, baseURL, tenant, orgID, clientID, clientSecret string, scopes []string) *tokenCache {
+	h := sha256.New()
+	for _, part := range []string{grant, baseURL, tenant, orgID, clientID, clientSecret, strings.Join(scopes, " ")} {
+		h.Write([]byte(part))
+		h.Write([]byte{0})
+	}
+	key := hex.EncodeToString(h.Sum(nil))
+	tokenCachesMu.Lock()
+	defer tokenCachesMu.Unlock()
+	t, ok := tokenCaches[key]
+	if !ok {
+		t = &tokenCache{}
+		tokenCaches[key] = t
+	}
+	return t
+}
+
+// tokenCache holds one bearer token and refreshes it shortly before it expires. Requests
+// that need a token while another request fetches one wait for that fetch.
 type tokenCache struct {
 	mu     sync.Mutex
 	token  string
@@ -134,7 +169,7 @@ type clientCredentials struct {
 	clientID     string
 	clientSecret string
 	scopes       []string
-	cache        tokenCache
+	cache        *tokenCache
 }
 
 func (a *clientCredentials) token(ctx context.Context) (string, error) {
@@ -163,7 +198,7 @@ type orgSwitch struct {
 	clientSecret string
 	scopes       []string
 	orgID        string
-	cache        tokenCache
+	cache        *tokenCache
 }
 
 func (a *orgSwitch) apply(ctx context.Context, r *http.Request) error {
