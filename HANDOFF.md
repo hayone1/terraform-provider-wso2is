@@ -5,6 +5,17 @@ before you stop (see the `session-handoff` skill). Never put secret values here.
 
 ## Last updated
 
+2026-11-07 (third session, from the Crossplane provider): the branch `fix/read-without-id` has
+five local commits (four changes and this note) that are **not pushed and not released**: reads without an ID report "not
+found" (`tfutil.MissingID`, `internal/provider/emptyid_test.go`); the User Sharing API v2 quirk
+is documented; deleted applications that the server still caches are noticed
+(`client.ApplicationGone`); and member lists of a group or role that just disappeared delete
+cleanly (`internal/provider/deleteparent_test.go`). Unit tests, `task lint` and the identity,
+application and organization acceptance tests pass on the lab. Next: with the maintainer's
+approval, merge, release v0.1.2, and bump the Crossplane provider.
+
+Earlier:
+
 2026-11-07 (second session): v0.1.1 prepares the provider for Crossplane's Upjet. The Hetzner
 lab was recreated and is running. The Crossplane provider is a separate project in
 `/home/hayone/github/crossplane-provider-wso2is` (start with its `BRIEF.md`).
