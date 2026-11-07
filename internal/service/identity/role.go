@@ -313,6 +313,10 @@ func (r *roleAssignmentResource) apply(ctx context.Context, roleID string, users
 		}
 	}
 	if err := r.client.PatchRole(ctx, roleID, ops); err != nil {
+		if client.IsSCIMNotFound(err) && users == nil && groups == nil {
+			// The role disappeared after the read, and its assignments with it.
+			return
+		}
 		tfutil.AddAPIError(diags, "update role assignments", err)
 	}
 }

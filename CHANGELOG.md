@@ -13,6 +13,9 @@ BUG FIXES:
   right after their application was deleted failed for about 15 minutes. The server keeps
   answering `GET /applications/{id}` for a deleted application during that time, so the
   provider now also asks an endpoint below the application.
+* `wso2is_group_members` and `wso2is_role_assignment`: deleting them failed when their group or
+  role disappeared between the read and the update, for example when Crossplane deleted both at
+  the same time. The members are gone with the group or role, so the delete now succeeds.
 
 ## 0.1.1 (2026-11-07)
 

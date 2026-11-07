@@ -225,6 +225,10 @@ func (r *groupMembersResource) apply(ctx context.Context, groupID string, want [
 		ops = append(ops, client.SCIMPatchOperation{Op: "remove", Path: `members[value eq "` + id + `"]`})
 	}
 	if err := r.client.PatchGroup(ctx, groupID, ops); err != nil {
+		if client.IsSCIMNotFound(err) && want == nil {
+			// The group disappeared after the read, and its members with it.
+			return
+		}
 		tfutil.AddAPIError(diags, "update group members", err)
 	}
 }
