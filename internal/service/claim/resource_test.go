@@ -65,7 +65,7 @@ resource "wso2is_user" "employee" {
 }
 `, suffix, displayName, scopeClaims, required)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
@@ -117,7 +117,7 @@ resource "wso2is_user" "employee" {
 
 func TestAccClaimDialect(t *testing.T) {
 	uri := "urn:" + acctest.RandomName("dialect")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

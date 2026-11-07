@@ -26,7 +26,7 @@ resource "wso2is_tenant" "test" {
   activated        = %[3]t
 }`, domain, first, activated)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy: acctest.CheckDestroyed(t, "wso2is_tenant", func(ctx context.Context, c *client.Client, id string) (bool, error) {

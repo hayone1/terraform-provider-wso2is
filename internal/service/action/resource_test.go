@@ -57,7 +57,7 @@ resource "wso2is_action" "profile" {
       { field = "grantType", operator = "notEquals", value = "refresh_token" },
     ] },
   ]`
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

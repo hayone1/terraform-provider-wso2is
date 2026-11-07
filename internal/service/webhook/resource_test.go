@@ -21,7 +21,7 @@ resource "wso2is_webhook" "events" {
   active   = %[3]t
 }`, name, channels, active)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

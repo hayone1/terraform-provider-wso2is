@@ -85,7 +85,7 @@ func TestAccResources_missingObjectIsNotFound(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.resource, func(t *testing.T) {
 			t.Parallel()
-			resource.Test(t, resource.TestCase{
+			acctest.Test(t, resource.TestCase{
 				PreCheck:                 func() { acctest.PreCheck(t) },
 				ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 				Steps: []resource.TestStep{{

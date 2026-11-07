@@ -83,7 +83,7 @@ resource "wso2is_user" "in_secondary" {
 			resource.TestCheckResourceAttr("wso2is_user.in_secondary", "user_store", domain),
 		)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps:                    steps,

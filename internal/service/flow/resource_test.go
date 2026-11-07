@@ -69,7 +69,7 @@ resource "wso2is_flow" "signup" {
 func TestAccFlow_customSignUp(t *testing.T) {
 	claim := strings.ReplaceAll(acctest.RandomName("member"), "-", "")
 	username := claim + "user"
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

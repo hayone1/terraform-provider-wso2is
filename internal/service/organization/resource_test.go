@@ -48,7 +48,7 @@ data "wso2is_organization" "by_name" {
 }
 `, name, desc, enabled, shared)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
@@ -83,7 +83,7 @@ func TestAccOrganizationScopedProvider(t *testing.T) {
 	acctest.PreCheck(t)
 	orgID, clientID, clientSecret := acctest.TestOrganization(t)
 	name := strings.ReplaceAll(acctest.RandomName("o"), "-", "")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{{
 			Config: fmt.Sprintf(orgScopedConfig, orgID, clientID, clientSecret, name, ""),
@@ -101,7 +101,7 @@ func TestAccOrganizationScopedProvider(t *testing.T) {
 			Config: fmt.Sprintf(orgScopedConfig, orgID, clientID, clientSecret, name, fmt.Sprintf("token_issuer_organization_id = %q", orgID)),
 			Check:  resource.TestCheckResourceAttr("wso2is_application.org_app", "oidc.token_issuer_organization_id", orgID),
 		}},
-	})
+	}, acctest.UpjetReadProviderConfig(map[string]any{"organization_id": orgID, "client_id": clientID, "client_secret": clientSecret}))
 }
 
 const orgScopedConfig = `
@@ -153,7 +153,7 @@ resource "wso2is_application" "org_app" {
 func TestAccOrganization_singleConfiguration(t *testing.T) {
 	acctest.PreCheck(t)
 	name := strings.ReplaceAll(acctest.RandomName("o"), "-", "")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		ExternalProviders: acctest.ExternalProviders(t),
 		Steps: []resource.TestStep{{
 			Config: fmt.Sprintf(`
@@ -211,7 +211,7 @@ resource "wso2is_group" "partner_staff" {
 				},
 			),
 		}},
-	})
+	}, acctest.SkipUpjetRead())
 }
 
 func TestAccOrganizationDiscovery(t *testing.T) {
@@ -235,7 +235,7 @@ resource "wso2is_organization_discovery" "partner" {
 }
 `, name, domains, selfSignUp)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy: func(*terraform.State) error {
@@ -323,7 +323,7 @@ resource "wso2is_user_share" "consultant" {
 	withAll := `share_with_all = {
     roles = [{ name = "viewer", audience_type = "application", audience_name = wso2is_application.portal.name }]
   }`
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

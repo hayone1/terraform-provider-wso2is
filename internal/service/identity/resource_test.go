@@ -24,7 +24,7 @@ func userExists(ctx context.Context, c *client.Client, id string) (bool, error) 
 
 func TestAccUser_lifecycle(t *testing.T) {
 	name := strings.ReplaceAll(acctest.RandomName("user"), "-", "")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_user", userExists),
@@ -107,7 +107,7 @@ resource "wso2is_user" "test" {
   email               = "%s@example.com"
 }`, name, pw, version, name)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_user", userExists),
@@ -220,7 +220,7 @@ resource "wso2is_role" "app" {
 }
 `, name, members, roleUsers, perms)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

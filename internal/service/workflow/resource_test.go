@@ -38,7 +38,7 @@ resource "wso2is_workflow_association" "new_roles" {
   enabled     = %[4]t
 }`, name, desc, steps, enabled)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

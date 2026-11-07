@@ -73,7 +73,7 @@ resource "wso2is_remote_logging" "audit" {
 }
 `
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
@@ -108,7 +108,7 @@ resource "wso2is_remote_logging" "audit" {
 func TestAccInboundProvisioning_resetOnDestroy(t *testing.T) {
 	acctest.PreCheck(t)
 	domain, user, pass := acctest.TestTenant(t)
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy: func(*terraform.State) error {
 			c := acctest.TenantClient(t, domain, user, pass)
@@ -134,7 +134,68 @@ resource "wso2is_inbound_provisioning_configuration" "this" {
 }`, domain, user, pass),
 			Check: resource.TestCheckResourceAttr("wso2is_inbound_provisioning_configuration.this", "provisioning_userstore", "PRIMARY"),
 		}},
-	})
+	}, acctest.UpjetReadProviderConfig(map[string]any{"tenant_domain": domain, "username": user, "password": pass}))
+}
+
+// The usage scope decides whether the tenant's organizations may use the root
+// organization's token issuer. The test runs in its own tenant, because NONE would break
+// the organization tests in the super tenant.
+func TestAccOAuth2IssuerUsageScope(t *testing.T) {
+	acctest.PreCheck(t)
+	domain, user, pass := acctest.TestTenant(t)
+	cfg := func(scope string) string {
+		// The import step needs the source: it runs in its own working directory.
+		return fmt.Sprintf(`
+terraform {
+  required_providers {
+    wso2is = { source = "hayone1/wso2is" }
+  }
+}
+
+provider "wso2is" {
+  tenant_domain = %q
+  username      = %q
+  password      = %q
+}
+
+resource "wso2is_oauth2_issuer_usage_scope" "this" {
+  usage_scope = %q
+}`, domain, user, pass, scope)
+	}
+	onServer := func(want string) resource.TestCheckFunc {
+		return func(*terraform.State) error {
+			c := acctest.TenantClient(t, domain, user, pass)
+			var doc map[string]any
+			if err := c.Get(acctest.Context(t), c.ServerPath("/configs/authentication/inbound/oauth2/issuer/usage-scope"), nil, &doc); err != nil {
+				return err
+			}
+			if got, _ := doc["usageScope"].(string); got != want {
+				return fmt.Errorf("server usage scope: got %q, want %q", got, want)
+			}
+			return nil
+		}
+	}
+	acctest.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: cfg("NONE"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("wso2is_oauth2_issuer_usage_scope.this", "usage_scope", "NONE"),
+					resource.TestCheckResourceAttr("wso2is_oauth2_issuer_usage_scope.this", "id", "oauth2_issuer_usage_scope"),
+					onServer("NONE"),
+				),
+			},
+			{Config: cfg("NONE"), ResourceName: "wso2is_oauth2_issuer_usage_scope.this", ImportState: true, ImportStateId: "oauth2_issuer_usage_scope", ImportStateVerify: true},
+			{
+				Config: cfg("ALL_EXISTING_AND_FUTURE_ORGS"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("wso2is_oauth2_issuer_usage_scope.this", "usage_scope", "ALL_EXISTING_AND_FUTURE_ORGS"),
+					onServer("ALL_EXISTING_AND_FUTURE_ORGS"),
+				),
+			},
+		},
+	}, acctest.UpjetReadProviderConfig(map[string]any{"tenant_domain": domain, "username": user, "password": pass}))
 }
 
 func boolStr(b bool) string {

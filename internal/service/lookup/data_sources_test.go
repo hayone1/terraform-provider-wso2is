@@ -15,7 +15,7 @@ func TestAccLookupDataSources(t *testing.T) {
 		admin = "admin"
 	}
 	name := acctest.RandomName("lookup")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{{
@@ -82,7 +82,7 @@ data "wso2is_identity_provider" "idp" {
 // cannot filter such names at all.
 func TestAccLookupDataSources_namesWithFilterKeywords(t *testing.T) {
 	prefix := acctest.RandomName("kw")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{{

@@ -34,7 +34,7 @@ resource "wso2is_email_sender" "smtp" {
   }
 }`, domain, user, pass, display)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
@@ -51,11 +51,11 @@ resource "wso2is_email_sender" "smtp" {
 				Check:  resource.TestCheckResourceAttr("wso2is_email_sender.smtp", "display_name", "Acme IAM"),
 			},
 		},
-	})
+	}, acctest.UpjetReadProviderConfig(map[string]any{"tenant_domain": domain, "username": user, "password": pass}))
 }
 
 func TestAccEmailSender_superTenantRejected(t *testing.T) {
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{{
@@ -126,7 +126,7 @@ resource "wso2is_notification_template" "custom_sms" {
   body    = %[3]q
 }`, name, subject, sms)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

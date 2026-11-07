@@ -70,7 +70,7 @@ resource "wso2is_identity_provider" "test" {
   }
 }`, name, scopes, secret, desc, jit)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_identity_provider", exists),
@@ -115,7 +115,7 @@ resource "wso2is_identity_provider" "test" {
 // force_delete is set.
 func TestAccIdentityProvider_socialAndLogin(t *testing.T) {
 	name := acctest.RandomName("google")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_identity_provider", exists),
@@ -171,7 +171,7 @@ func TestAccIdentityProvider_samlWithCertificateAndProvisioning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_identity_provider", exists),

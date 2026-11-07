@@ -30,7 +30,7 @@ func exists(ctx context.Context, c *client.Client, id string) (bool, error) {
 
 func TestAccAPIResource_lifecycle(t *testing.T) {
 	name := acctest.RandomName("api")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_api_resource", exists),
@@ -151,7 +151,7 @@ resource "wso2is_application_authorized_api" "users" {
 }
 `, name, scopes)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

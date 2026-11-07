@@ -23,7 +23,7 @@ func appExists(ctx context.Context, c *client.Client, id string) (bool, error) {
 
 func TestAccApplication_oidcLifecycle(t *testing.T) {
 	name := acctest.RandomName("app")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_application", appExists),
@@ -178,7 +178,7 @@ resource "wso2is_application" "test" {
 func TestAccApplication_m2mCustomCredentials(t *testing.T) {
 	name := acctest.RandomName("m2m")
 	clientID := "tfacc_" + name[len(name)-8:]
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_application", appExists),
@@ -230,7 +230,7 @@ resource "wso2is_application" "m2m" {
 
 func TestAccApplication_publicSPA(t *testing.T) {
 	name := acctest.RandomName("spa")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_application", appExists),
@@ -272,7 +272,7 @@ func TestAccApplication_disappears(t *testing.T) {
 resource "wso2is_application" "test" {
   name = %q
 }`, name)
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_application", appExists),
@@ -296,7 +296,7 @@ resource "wso2is_application" "test" {
 
 func TestAccApplication_passiveSTS(t *testing.T) {
 	name := acctest.RandomName("wsfed")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             acctest.CheckDestroyed(t, "wso2is_application", appExists),
@@ -321,7 +321,7 @@ resource "wso2is_application" "wsfed" {
 
 func TestAccApplication_duplicateName(t *testing.T) {
 	name := acctest.RandomName("dup")
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

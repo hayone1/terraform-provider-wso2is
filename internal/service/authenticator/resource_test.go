@@ -31,7 +31,7 @@ data "wso2is_authenticators" "local" {
   depends_on = [wso2is_custom_authenticator.pin]
 }`, name, display, enabled)
 	}
-	resource.Test(t, resource.TestCase{
+	acctest.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
