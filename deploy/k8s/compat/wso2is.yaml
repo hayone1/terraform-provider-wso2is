@@ -1,0 +1,89 @@
+# One WSO2 Identity Server ${VERSION} with its embedded H2 database, for running the
+# acceptance tests against older versions. Rendered per version by `task lab:compat`
+# and reached with `task lab:compat:forward` on https://localhost:19<version>.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${NAME}
+  namespace: wso2is-compat
+spec:
+  selector:
+    app.kubernetes.io/name: ${NAME}
+  ports:
+    - name: servlet-https
+      port: 9443
+      targetPort: 9443
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${NAME}
+  namespace: wso2is-compat
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ${NAME}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ${NAME}
+    spec:
+      securityContext:
+        runAsUser: 802
+        runAsGroup: 802
+        fsGroup: 802
+      initContainers:
+        # Start from the image's own deployment.toml and add what the tests need.
+        - name: prepare
+          image: docker.io/wso2/wso2is:${VERSION}
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              awk 'BEGIN { pw = ENVIRON["ADMIN_PASSWORD"]; gsub(/\\/, "\\\\", pw); gsub(/"/, "\\\"", pw) }
+                   /^\[super_admin\]/ { s = 1 } /^\[/ && !/^\[super_admin\]/ { s = 0 }
+                   s && /^password *=/ { print "password = \"" pw "\""; next } { print }' \
+                /home/wso2carbon/wso2is-${VERSION}/repository/conf/deployment.toml > /work/deployment.toml
+              cat >> /work/deployment.toml <<'TOML'
+
+              [tenant_mgt]
+              tenant_deletion = true
+
+              [[resource.access_control]]
+              context = "(.*)/api/server/v1/flow(.*)"
+              secure = true
+              http_method = "DELETE"
+              scopes = ["internal_flow_update"]
+              TOML
+          env:
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: wso2is-compat, key: admin-password }
+          volumeMounts:
+            - { name: work, mountPath: /work }
+      containers:
+        - name: wso2is
+          image: docker.io/wso2/wso2is:${VERSION}
+          env:
+            - name: JVM_MEM_OPTS
+              value: "-Xms768m -Xmx1536m"
+          ports:
+            - containerPort: 9443
+          volumeMounts:
+            - name: work
+              mountPath: /home/wso2carbon/wso2is-${VERSION}/repository/conf/deployment.toml
+              subPath: deployment.toml
+          resources:
+            requests: { cpu: 500m, memory: 1536Mi }
+            limits: { memory: 2560Mi }
+          readinessProbe:
+            httpGet: { path: /api/health-check/v1.0/health, port: 9443, scheme: HTTPS }
+            periodSeconds: 10
+            failureThreshold: 60
+      volumes:
+        - name: work
+          emptyDir: {}

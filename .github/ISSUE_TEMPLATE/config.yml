@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/hayone1/terraform-provider-wso2is/tree/main/docs
+    about: Provider configuration, guides and every resource.
+  - name: WSO2 Identity Server questions
+    url: https://is.docs.wso2.com/en/latest/
+    about: Questions about the server itself rather than the provider.

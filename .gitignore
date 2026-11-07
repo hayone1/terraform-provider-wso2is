@@ -1,0 +1,49 @@
+# Local working files (reference repos, scratch output, captured requests)
+_debug/
+
+# Secrets
+.env
+*.env
+!example.env
+*.p12
+*.jks
+*.pem
+*.key
+# Test fixtures (public test certificates only, never private keys)
+!**/testdata/*.pem
+kubeconfig*.yaml
+
+# Build output
+/bin/
+/dist/
+/terraform-provider-wso2is
+*.exe
+coverage.out
+coverage.html
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+!deploy/hetzner/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!examples/**/*.tfvars.example
+.terraformrc
+terraform.rc
+
+# Task
+.task/
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Rendered deployment files
+deploy/k8s/overlays/*/generated/
+
+# Claude Code personal settings (the skills in .claude/skills are shared)
+.claude/settings.local.json

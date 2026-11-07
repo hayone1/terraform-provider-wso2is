@@ -1,0 +1,67 @@
+# Internal TLS for WSO2 Identity Server, issued by cert-manager (required).
+#
+# A private CA, local to the namespace, signs the certificate WSO2 serves on port
+# 9443. Its names cover the server calling itself (localhost) and in-cluster clients
+# such as the ingress controller (wso2is.wso2is.svc). Public clients reach WSO2
+# through an ingress that presents a publicly trusted certificate instead; see
+# overlays/lab.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wso2is-ca
+spec:
+  isCA: true
+  commonName: WSO2 Identity Server internal CA
+  secretName: wso2is-ca
+  duration: 87600h # 10 years
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: wso2is-ca
+spec:
+  ca:
+    secretName: wso2is-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wso2is-tls
+spec:
+  secretName: wso2is-tls
+  commonName: wso2is
+  dnsNames:
+    - localhost
+    - wso2is
+    - wso2is.wso2is.svc
+    - wso2is.wso2is.svc.cluster.local
+  ipAddresses:
+    - 127.0.0.1
+  # WSO2 reads its keystore at start-up only. A long lifetime avoids restarts for
+  # renewal; restart the deployment after cert-manager renews the certificate.
+  duration: 8760h # 1 year
+  renewBefore: 720h
+  privateKey:
+    algorithm: RSA
+    size: 2048
+    rotationPolicy: Always
+  usages:
+    - server auth
+    - digital signature
+    - key encipherment
+  issuerRef:
+    name: wso2is-ca
+    kind: Issuer

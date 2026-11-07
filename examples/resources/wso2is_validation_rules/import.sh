@@ -1,0 +1,1 @@
+terraform import wso2is_validation_rules.password password

@@ -1,0 +1,139 @@
+---
+page_title: "WSO2 Identity Server Provider"
+description: |-
+  Use Terraform to manage WSO2 Identity Server 7.x: applications, users, organizations, sign-up flows, identity providers and server settings.
+---
+
+# WSO2 Identity Server Provider
+
+The `wso2is` provider lets you manage [WSO2 Identity Server](https://wso2.com/identity-server/) with
+Terraform. You describe the setup you want in configuration files. Terraform then calls the
+server's management REST APIs to create, change or delete objects until the server matches your
+files.
+
+The provider can manage these parts of the server:
+
+* applications that sign users in with OIDC, SAML, WS-Federation or WS-Trust
+* APIs and the scopes that applications may request
+* users, groups, roles and user stores
+* attributes (claims) and OIDC scopes
+* connections to other identity providers
+* organizations for business customers (B2B)
+* sign-up and password recovery flows
+* branding, email and SMS templates, and notification senders
+* actions, webhooks and approval workflows
+* tenants and tenant-wide settings
+
+The provider is built and tested against **WSO2 Identity Server 7.3.0**. Before you start, read
+[Known server behaviour and limitations](guides/server-behaviour). That page explains the server
+behaviour that affects how you write configurations.
+
+New to the provider? Follow the [Getting started](guides/getting-started) guide. It takes about
+ten minutes and only needs Docker and Terraform.
+
+## Example Usage
+
+{{ tffile "examples/provider/provider.tf" }}
+
+## Authentication
+
+The provider must sign in to the server before it can make changes. Choose one of these three
+methods:
+
+| Method | Settings | When to use it |
+|--------|----------|----------------|
+| Basic authentication | `username` and `password` | Use it to get started and in test labs. The user must be an administrator of the tenant. |
+| OAuth2 client credentials | `client_id` and `client_secret`, and optionally `scopes` | Use it for automation, such as CI/CD pipelines. The credentials belong to an M2M (machine-to-machine) application that is allowed to call the management APIs. |
+| Access token | `access_token` | Use it when your own tooling already gets a token. The provider sends the token as it is and never refreshes it. |
+
+The provider reads credentials from the provider block first. If the block sets any credential,
+the provider ignores all credential environment variables. For example, a provider block that sets
+`client_id` and `client_secret` ignores `WSO2IS_USERNAME` and `WSO2IS_PASSWORD`.
+
+When you use client credentials, the provider asks for the `SYSTEM` scope by default. The server
+replaces `SYSTEM` with every scope that the application is allowed to use. This means you control
+what Terraform can do by choosing which APIs the application may call. The
+[Authentication guide](guides/authentication) shows how to create this application with Terraform.
+
+## Tenants and organizations
+
+A **tenant** is a separate root organization on the server, with its own users, applications and
+settings. Every server starts with the `carbon.super` tenant.
+
+* Set `tenant_domain` to manage a tenant other than `carbon.super`. Users of that tenant sign in
+  as `user@tenant-domain`.
+* Set `organization_id` to manage a sub-organization (a B2B customer) instead of the root
+  organization. The provider gets a token for the sub-organization with the `organization_switch`
+  grant and then calls the organization APIs (the paths that contain `/o/`).
+
+Use a separate provider block, with its own `alias`, for each organization. The organization ID can
+come from a `wso2is_organization` resource in the same configuration. The
+[Organizations guide](guides/organizations) shows a complete example.
+
+## TLS certificates
+
+The provider checks the server's TLS certificate. It trusts the certificate authorities of your
+operating system and any certificate you give in `ca_certificate`. You can set `ca_certificate`
+to the PEM text of the certificate or to the path of a PEM file.
+
+A new WSO2 Identity Server uses a self-signed certificate that nobody trusts. On a local test
+server, you can set `insecure_skip_verify = true` to turn off the check. Do not turn it off for a
+server that other people use.
+
+## Environment variables
+
+You can set every provider setting with an environment variable instead. This keeps secrets out
+of your configuration files.
+
+| Setting | Environment variable |
+|---------|----------------------|
+| `base_url` | `WSO2IS_BASE_URL` |
+| `tenant_domain` | `WSO2IS_TENANT_DOMAIN` |
+| `organization_id` | `WSO2IS_ORGANIZATION_ID` |
+| `username` and `password` | `WSO2IS_USERNAME` and `WSO2IS_PASSWORD` |
+| `client_id` and `client_secret` | `WSO2IS_CLIENT_ID` and `WSO2IS_CLIENT_SECRET` |
+| `scopes` | `WSO2IS_SCOPES` (separate the scopes with spaces) |
+| `access_token` | `WSO2IS_ACCESS_TOKEN` |
+| `ca_certificate` | `WSO2IS_CA_CERTIFICATE` |
+| `insecure_skip_verify` | `WSO2IS_INSECURE_SKIP_VERIFY` |
+| `request_timeout` | `WSO2IS_REQUEST_TIMEOUT` |
+| `max_retries` | `WSO2IS_MAX_RETRIES` |
+
+## How the resources work
+
+The resources fall into a few groups. Each group behaves a little differently.
+
+**Objects.** Applications, users, roles, identity providers and similar resources are objects.
+Terraform creates an object when you add its resource and deletes the object when you remove the
+resource. If you leave out an optional attribute, the server uses its own default value. For most
+attributes, the provider also reads back the server's value. As a result, a change that someone
+makes in the Console shows up as a difference in the next `terraform plan`.
+
+**Tenant-wide settings.** Resources such as the `*_configuration` resources,
+`wso2is_governance_connector`, `wso2is_validation_rules`, `wso2is_flow` and the branding resources
+manage settings that always exist on the server. When you create one of these resources, Terraform
+takes control of the settings that you list. The provider leaves all other settings alone. Destroying
+one of these resources either restores the server defaults or only removes the resource from the
+Terraform state. Each resource page tells you which one happens.
+
+**Secrets.** Most APIs never send secrets back, such as client secrets and passwords. The provider
+keeps the value from your configuration in the state. It cannot notice when someone changes the
+secret in the Console. Some resources offer write-only arguments, such as `password_wo` and
+`value_wo`, which need Terraform 1.11 or later. A write-only argument keeps the secret out of the
+state. To send a new value, change the secret and increase the matching `*_version` number.
+
+**Import.** You can import every resource. The import ID format is at the end of each resource
+page. To bring many existing objects under Terraform, add `import` blocks and run
+`terraform plan -generate-config-out=generated.tf`. Terraform then writes the configuration for you.
+
+## Retries and parallel changes
+
+The provider retries a request when the server answers with HTTP 429, 502, 503 or 504, or when
+the connection fails. Set `max_retries` to change how often it tries again.
+
+The server stores some tenant-wide settings, such as governance connectors and server
+configurations, in one shared record. Two changes to that record at the same time can overwrite
+each other. To prevent this, the provider makes changes to these settings one at a time. You can
+still manage many of these resources in the same configuration.
+
+{{ .SchemaMarkdown | trimspace }}

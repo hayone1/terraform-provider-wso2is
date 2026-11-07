@@ -1,0 +1,1 @@
+terraform import wso2is_organization_discovery_configuration.this organization_discovery_configuration

@@ -1,0 +1,1 @@
+terraform import wso2is_oidc_scope.employee employee

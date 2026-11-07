@@ -1,0 +1,1 @@
+terraform import wso2is_organization_discovery.partner <organization_id>

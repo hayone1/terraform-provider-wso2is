@@ -1,0 +1,1 @@
+terraform import wso2is_flow.sign_up REGISTRATION

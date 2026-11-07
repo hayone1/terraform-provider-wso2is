@@ -1,0 +1,1 @@
+terraform import wso2is_admin_advisory_banner.this admin_advisory_banner

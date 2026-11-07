@@ -1,0 +1,234 @@
+# https://taskfile.dev
+version: '3'
+
+dotenv: ['.env']
+
+includes:
+  lab: ./taskfiles/lab.yml
+
+vars:
+  BIN_DIR: '{{.ROOT_DIR}}/bin'
+  # WSO2 Identity Server in Docker (task wso2:up).
+  WSO2_VERSION: '{{.WSO2_VERSION | default "7.3.0"}}'
+  WSO2_PORT: '{{.WSO2_PORT | default "9443"}}'
+  LOCAL_URL: 'https://localhost:{{.WSO2_PORT}}'
+  # Acceptance tests run against WSO2IS_BASE_URL, or else the lab server from .env.
+  ACC_BASE_URL: '{{.WSO2IS_BASE_URL | default (printf "https://%s" .WSO2_HOSTNAME)}}'
+  # Terraform CLI used by the acceptance tests: terraform (default) or tofu.
+  TF_CLI: '{{.TF_CLI | default "terraform"}}'
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  build:
+    desc: Build the provider binary into ./bin.
+    sources: ['**/*.go', go.mod, go.sum]
+    generates: ['{{.BIN_DIR}}/terraform-provider-wso2is']
+    cmds:
+      - go build -o {{.BIN_DIR}}/terraform-provider-wso2is .
+
+  install:
+    desc: Install the provider with go install and print a dev_overrides block for ~/.terraformrc.
+    cmds:
+      - go install .
+      - |
+        echo 'provider_installation {
+          dev_overrides {
+            "hayone1/wso2is" = "'"$(go env GOBIN | grep . || echo "$(go env GOPATH)/bin")"'"
+          }
+          direct {}
+        }'
+
+  fmt:
+    desc: Format Go code and Terraform examples.
+    cmds:
+      - gofmt -s -w .
+      - terraform fmt -recursive examples/
+
+  fmt:check:
+    desc: Fail when Go code or examples are not formatted.
+    cmds:
+      - test -z "$(gofmt -s -l . | grep -v '^_debug/')" || (gofmt -s -l . | grep -v '^_debug/'; echo 'run task fmt'; exit 1)
+      - terraform fmt -check -recursive examples/
+
+  vet:
+    desc: Run go vet.
+    cmds:
+      - go vet ./...
+
+  lint:
+    desc: Run golangci-lint (configuration in .golangci.yml).
+    preconditions:
+      - sh: command -v golangci-lint
+        msg: 'golangci-lint is not installed: https://golangci-lint.run/welcome/install/'
+    cmds:
+      - golangci-lint run ./...
+
+  test:
+    desc: 'Run unit tests. Example: task test -- -run TestMergeJSON ./internal/client/'
+    cmds:
+      - go test {{if .CLI_ARGS}}{{.CLI_ARGS}}{{else}}./...{{end}}
+
+  # ---- acceptance tests -------------------------------------------------------
+
+  testacc:
+    desc: 'Run acceptance tests against a real server (WSO2IS_BASE_URL or the lab). Add TF_CLI=tofu to use OpenTofu. Example: task testacc -- -run TestAccApplication ./internal/service/application/'
+    vars:
+      PKGS: '{{if .CLI_ARGS}}{{.CLI_ARGS}}{{else}}./...{{end}}'
+      BASE_URL: '{{.BASE_URL | default .ACC_BASE_URL}}'
+      USERNAME: '{{.USERNAME | default .WSO2IS_USERNAME | default .WSO2_ADMIN_USERNAME}}'
+      PASSWORD: '{{.PASSWORD | default .WSO2IS_PASSWORD | default .WSO2_ADMIN_PASSWORD}}'
+      INSECURE: '{{.INSECURE | default .WSO2IS_INSECURE_SKIP_VERIFY | default "false"}}'
+    requires:
+      vars: [BASE_URL, USERNAME, PASSWORD]
+    preconditions:
+      - sh: command -v {{.TF_CLI}}
+        msg: '{{.TF_CLI}} is not installed. Install Terraform, or OpenTofu and pass TF_CLI=tofu.'
+    env:
+      TF_ACC: '1'
+      TF_ACC_TERRAFORM_PATH:
+        sh: command -v {{.TF_CLI}}
+      WSO2IS_BASE_URL: '{{.BASE_URL}}'
+      WSO2IS_USERNAME: '{{.USERNAME}}'
+      WSO2IS_PASSWORD: '{{.PASSWORD}}'
+      WSO2IS_INSECURE_SKIP_VERIFY: '{{.INSECURE}}'
+      # NO_JDBC: the server cannot reach the secondary user store database from .env.
+      WSO2IS_TEST_JDBC_URL: '{{if .NO_JDBC}}{{else}}{{.WSO2IS_TEST_JDBC_URL}}{{end}}'
+    cmds:
+      - go test -count=1 -timeout 120m {{.PKGS}}
+
+  testacc:local:
+    desc: 'Run acceptance tests against the Docker server from task wso2:up. Example: task testacc:local -- ./internal/service/identity/'
+    cmds:
+      - task: testacc
+        vars:
+          BASE_URL: '{{.LOCAL_URL}}'
+          USERNAME: admin
+          PASSWORD: admin
+          INSECURE: 'true'
+          NO_JDBC: 'true'
+          CLI_ARGS: '{{.CLI_ARGS}}'
+
+  testacc:matrix:
+    desc: 'Run the acceptance tests against each WSO2 IS version in Docker, one after another. Example: task testacc:matrix VERSIONS="7.2.0 7.3.0"'
+    vars:
+      VERSIONS: '{{.VERSIONS | default .WSO2_VERSION}}'
+    cmds:
+      - for: { var: VERSIONS }
+        task: testacc:version
+        vars:
+          WSO2_VERSION: '{{.ITEM}}'
+          CLI_ARGS: '{{.CLI_ARGS}}'
+
+  testacc:version:
+    internal: true
+    cmds:
+      - task: wso2:up
+        vars: { WSO2_VERSION: '{{.WSO2_VERSION}}' }
+      - defer: { task: wso2:down, vars: { WSO2_VERSION: '{{.WSO2_VERSION}}' } }
+      - task: testacc:local
+        vars: { CLI_ARGS: '{{.CLI_ARGS}}' }
+
+  sweep:
+    desc: Delete objects left by interrupted acceptance tests (anything with "tfacc" in its name) from the test server.
+    prompt: This deletes every object whose name contains "tfacc" on {{.BASE_URL}}. Continue?
+    vars:
+      BASE_URL: '{{.BASE_URL | default .ACC_BASE_URL}}'
+      USERNAME: '{{.USERNAME | default .WSO2IS_USERNAME | default .WSO2_ADMIN_USERNAME}}'
+      PASSWORD: '{{.PASSWORD | default .WSO2IS_PASSWORD | default .WSO2_ADMIN_PASSWORD}}'
+      INSECURE: '{{.INSECURE | default .WSO2IS_INSECURE_SKIP_VERIFY | default "false"}}'
+    env:
+      WSO2IS_BASE_URL: '{{.BASE_URL}}'
+      WSO2IS_USERNAME: '{{.USERNAME}}'
+      WSO2IS_PASSWORD: '{{.PASSWORD}}'
+      WSO2IS_INSECURE_SKIP_VERIFY: '{{.INSECURE}}'
+    cmds:
+      - go test ./internal/sweep -v -sweep=all -timeout 30m
+
+  # ---- local WSO2 Identity Server ---------------------------------------------
+
+  wso2:up:
+    desc: 'Start WSO2 Identity Server in Docker (admin/admin) with tenant and flow deletion enabled. Example: task wso2:up WSO2_VERSION=7.2.0'
+    vars:
+      CONTAINER: 'wso2is-{{.WSO2_VERSION}}'
+      CONF: '/home/wso2carbon/wso2is-{{.WSO2_VERSION}}/repository/conf/deployment.toml'
+      WORK: '{{.ROOT_DIR}}/.task/wso2is-{{.WSO2_VERSION}}'
+    status:
+      - test -n "$(docker ps -q --filter name=^{{.CONTAINER}}$ --filter status=running)"
+    cmds:
+      - mkdir -p {{.WORK}}
+      - docker rm -f {{.CONTAINER}} >/dev/null 2>&1 || true
+      - docker create --name {{.CONTAINER}} -p {{.WSO2_PORT}}:9443 docker.io/wso2/wso2is:{{.WSO2_VERSION}}
+      # The image's own configuration plus what the acceptance tests rely on.
+      - docker cp {{.CONTAINER}}:{{.CONF}} {{.WORK}}/deployment.toml
+      - cat {{.ROOT_DIR}}/deploy/docker/deployment-overrides.toml >> {{.WORK}}/deployment.toml
+      - docker cp {{.WORK}}/deployment.toml {{.CONTAINER}}:{{.CONF}}
+      - docker start {{.CONTAINER}}
+      - cmd: curl -skf --retry 120 --retry-delay 5 --retry-all-errors -o /dev/null {{.LOCAL_URL}}/api/health-check/v1.0/health
+        timeout: 12m
+      - echo "WSO2 Identity Server {{.WSO2_VERSION}} is up at {{.LOCAL_URL}} (admin/admin)"
+
+  wso2:down:
+    desc: Stop and remove the Docker server.
+    cmds:
+      - docker rm -f wso2is-{{.WSO2_VERSION}} >/dev/null 2>&1 || true
+
+  wso2:logs:
+    desc: Follow the Docker server's logs.
+    cmds:
+      - docker logs -f wso2is-{{.WSO2_VERSION}}
+
+  # ---- documentation and examples ---------------------------------------------
+
+  docs:
+    desc: Generate docs/ from the schemas, templates/ and examples/ (tfplugindocs).
+    sources: ['internal/**/*.go', 'templates/**', 'examples/**']
+    generates: ['docs/**/*.md']
+    cmds:
+      - go generate ./...
+
+  docs:check:
+    desc: Fail when docs/ is not up to date with the code.
+    cmds:
+      - go generate ./...
+      - go tool tfplugindocs validate --provider-name wso2is
+      - test -z "$(git status --porcelain -- docs/)" || (git status --porcelain -- docs/; echo 'docs/ is out of date; run task docs'; exit 1)
+
+  examples:validate:
+    desc: Run terraform validate (or tofu validate with TF_CLI=tofu) on every example against the locally built provider.
+    deps: [build]
+    vars:
+      DIRS:
+        sh: find examples -name '*.tf' -exec dirname {} \; | sort -u
+    cmds:
+      - for: { var: DIRS }
+        cmd: 'TF_CLI={{.TF_CLI}} {{.ROOT_DIR}}/scripts/validate-example.sh {{.ITEM}} {{.BIN_DIR}}'
+
+  # ---- release ------------------------------------------------------------------
+
+  release:snapshot:
+    desc: Build the release archives locally with GoReleaser, without signing or publishing them.
+    cmds:
+      - go run github.com/goreleaser/goreleaser/v2@latest release --snapshot --clean --skip=sign
+
+  release:public-key:
+    desc: Print the public key of the release signing key (add it to the Terraform and OpenTofu registries).
+    requires:
+      vars: [GPG_FINGERPRINT]
+    cmds:
+      - gpg --armor --export {{.GPG_FINGERPRINT}}
+
+  release:secrets:
+    desc: Upload the release signing key from .env to the GitHub repository's Actions secrets.
+    requires:
+      vars: [GPG_PRIVATE_KEY, PASSPHRASE]
+    preconditions:
+      - sh: gh repo view >/dev/null 2>&1
+        msg: 'gh cannot see a GitHub repository for this folder. Create and push the repository first (see RELEASING.md).'
+    cmds:
+      - gh secret set GPG_PRIVATE_KEY --body "$GPG_PRIVATE_KEY"
+      - gh secret set PASSPHRASE --body "$PASSPHRASE"
+      - gh secret list

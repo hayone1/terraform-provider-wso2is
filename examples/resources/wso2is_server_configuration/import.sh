@@ -1,0 +1,1 @@
+terraform import wso2is_server_configuration.this server_configuration

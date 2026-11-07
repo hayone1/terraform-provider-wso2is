@@ -1,0 +1,1 @@
+terraform import wso2is_identity_provider.google <identity_provider_id>

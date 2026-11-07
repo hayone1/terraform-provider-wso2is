@@ -1,0 +1,1 @@
+terraform import wso2is_passive_sts_configuration.this passive_sts_configuration

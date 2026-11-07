@@ -1,0 +1,24 @@
+#cloud-config
+# Installs k3s with its bundled Traefik ingress controller and ServiceLB, which
+# publish ports 80 and 443 on the server's public addresses.
+package_update: true
+package_upgrade: true
+packages:
+  - curl
+  - jq
+
+write_files:
+  - path: /etc/rancher/k3s/config.yaml
+    permissions: "0600"
+    content: |
+      write-kubeconfig-mode: "0600"
+      tls-san:
+        - 127.0.0.1
+        - ${lab_domain}
+      # The API is reached through an SSH tunnel; the firewall keeps 6443 closed.
+      secrets-encryption: true
+
+runcmd:
+  - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION='${k3s_version}' sh -s - server
+  - until /usr/local/bin/k3s kubectl get --raw /readyz >/dev/null 2>&1; do sleep 5; done
+  - touch /var/lib/cloud/k3s-ready

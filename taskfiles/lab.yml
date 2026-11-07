@@ -1,0 +1,243 @@
+# Lab: WSO2 Identity Server with PostgreSQL on a single-node k3s cluster in Hetzner
+# Cloud, published on https://WSO2_HOSTNAME with a Let's Encrypt certificate.
+# See deploy/README.md for the full walkthrough.
+#
+# Settings come from the root .env file (see example.env).
+version: '3'
+
+vars:
+  LAB_DIR: '{{.ROOT_DIR}}/_debug/lab'
+  LAB_KUBECONFIG: '{{.LAB_DIR}}/kubeconfig.yaml'
+  LAB_TUNNEL_PORT: 16443
+  TF_DIR: '{{.ROOT_DIR}}/deploy/hetzner'
+  K8S_DIR: '{{.ROOT_DIR}}/deploy/k8s'
+  NAMESPACE: wso2is
+  # Terraform or OpenTofu: task lab:infra TF_CLI=tofu
+  TF_CLI: '{{.TF_CLI | default "terraform"}}'
+  CERT_MANAGER_VERSION: v1.21.3
+  # SSH key that may log in to the server as root (the .pub file must exist next to it).
+  LAB_SSH_KEY: '{{.LAB_SSH_KEY | default (printf "%s/.ssh/id_ed25519" (env "HOME"))}}'
+  SSH: ssh -i {{.LAB_SSH_KEY}} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile={{.LAB_DIR}}/known_hosts
+
+env:
+  KUBECONFIG: '{{.LAB_KUBECONFIG}}'
+
+tasks:
+  up:
+    desc: Create the lab server and deploy WSO2 IS, PostgreSQL and cert-manager on it.
+    cmds:
+      - task: infra
+      - task: platform
+      - task: deploy
+      - task: wait
+
+  infra:
+    desc: Create or update the Hetzner server, firewall and DNS records (Terraform in deploy/hetzner).
+    requires:
+      vars: [HCLOUD_TOKEN, LAB_DNS_ZONE, LAB_SUBDOMAIN]
+    preconditions:
+      - sh: test -f {{.LAB_SSH_KEY}}.pub
+        msg: 'No SSH public key at {{.LAB_SSH_KEY}}.pub. Create one with ssh-keygen -t ed25519, or set LAB_SSH_KEY in .env.'
+    dir: '{{.TF_DIR}}'
+    env:
+      TF_VAR_ssh_public_key:
+        sh: cat {{.LAB_SSH_KEY}}.pub
+      TF_VAR_dns_zone: '{{.LAB_DNS_ZONE}}'
+      TF_VAR_dns_subdomain: '{{.LAB_SUBDOMAIN}}'
+    cmds:
+      - '{{.TF_CLI}} init -input=false'
+      - '{{.TF_CLI}} apply -input=false {{.CLI_ARGS}}'
+      # A new server has a new host key and a new kubeconfig.
+      - rm -f {{.LAB_DIR}}/known_hosts {{.LAB_KUBECONFIG}}
+      - task: ready
+
+  ready:
+    desc: Wait until cloud-init has installed k3s on the server.
+    vars:
+      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+    cmds:
+      - mkdir -p {{.LAB_DIR}}
+      - cmd: until {{.SSH}} -o ConnectTimeout=5 -o BatchMode=yes root@{{.LAB_HOST}} test -f /var/lib/cloud/k3s-ready 2>/dev/null; do echo "waiting for k3s on {{.LAB_HOST}}"; sleep 10; done
+        timeout: 15m
+
+  destroy:
+    desc: Delete the lab server, its firewall and DNS records. Everything on the server is lost.
+    prompt: This deletes the lab server and all of its data. Continue?
+    requires:
+      vars: [HCLOUD_TOKEN, LAB_DNS_ZONE, LAB_SUBDOMAIN]
+    dir: '{{.TF_DIR}}'
+    env:
+      TF_VAR_ssh_public_key:
+        sh: cat {{.LAB_SSH_KEY}}.pub
+      TF_VAR_dns_zone: '{{.LAB_DNS_ZONE}}'
+      TF_VAR_dns_subdomain: '{{.LAB_SUBDOMAIN}}'
+    cmds:
+      - '{{.TF_CLI}} destroy -input=false {{.CLI_ARGS}}'
+      - rm -f {{.LAB_DIR}}/known_hosts {{.LAB_KUBECONFIG}}
+
+  ssh:
+    desc: 'Run a command on the lab server. Example: task lab:ssh -- uptime'
+    vars:
+      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+    cmds:
+      - mkdir -p {{.LAB_DIR}}
+      - '{{.SSH}} root@{{.LAB_HOST}} {{.CLI_ARGS}}'
+
+  kubeconfig:
+    desc: Fetch the k3s kubeconfig. kubectl reaches the API through an SSH tunnel (task lab:tunnel).
+    vars:
+      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+    status:
+      - test -s {{.LAB_KUBECONFIG}}
+    cmds:
+      - mkdir -p {{.LAB_DIR}}
+      - '{{.SSH}} root@{{.LAB_HOST}} cat /etc/rancher/k3s/k3s.yaml | sed "s#https://127.0.0.1:6443#https://127.0.0.1:{{.LAB_TUNNEL_PORT}}#" > {{.LAB_KUBECONFIG}}'
+      - chmod 600 {{.LAB_KUBECONFIG}}
+
+  tunnel:
+    desc: Open the SSH tunnel to the k3s API on localhost:16443 (does nothing when it is already open).
+    deps: [kubeconfig]
+    vars:
+      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+    status:
+      - kubectl get --raw /readyz --request-timeout=5s
+    cmds:
+      - '{{.SSH}} -fNT -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -L {{.LAB_TUNNEL_PORT}}:127.0.0.1:6443 root@{{.LAB_HOST}}'
+      - kubectl get --raw /readyz --request-timeout=10s
+
+  platform:
+    desc: Install cert-manager and the Let's Encrypt cluster issuers.
+    deps: [tunnel]
+    cmds:
+      - kubectl apply --server-side -f https://github.com/cert-manager/cert-manager/releases/download/{{.CERT_MANAGER_VERSION}}/cert-manager.yaml
+      - for: [cert-manager, cert-manager-cainjector, cert-manager-webhook]
+        cmd: kubectl -n cert-manager rollout status deployment/{{.ITEM}} --timeout=5m
+      # The webhook needs a few seconds after rollout before it admits resources.
+      - cmd: until kubectl apply -f {{.K8S_DIR}}/platform/cluster-issuer.yaml; do sleep 5; done
+        timeout: 2m
+
+  secrets:
+    desc: Create or update the Secret with the WSO2 IS and PostgreSQL credentials.
+    deps: [tunnel]
+    requires:
+      vars: [WSO2_ADMIN_USERNAME, WSO2_ADMIN_PASSWORD, WSO2_DB_USERNAME, WSO2_DB_PASSWORD, WSO2_TLS_KEYSTORE_PASSWORD, WSO2_AUTH_ENDPOINT_APP_PASSWORD]
+    vars:
+      AUTH_ENDPOINT_HASH:
+        sh: printf '%s' "$WSO2_AUTH_ENDPOINT_APP_PASSWORD" | sha256sum | cut -d' ' -f1
+    cmds:
+      - kubectl create namespace {{.NAMESPACE}} --dry-run=client -o yaml | kubectl apply -f -
+      - >-
+        kubectl -n {{.NAMESPACE}} create secret generic wso2is-credentials --dry-run=client -o yaml
+        --from-literal=admin-username="$WSO2_ADMIN_USERNAME"
+        --from-literal=admin-password="$WSO2_ADMIN_PASSWORD"
+        --from-literal=db-username="$WSO2_DB_USERNAME"
+        --from-literal=db-password="$WSO2_DB_PASSWORD"
+        --from-literal=tls-keystore-password="$WSO2_TLS_KEYSTORE_PASSWORD"
+        --from-literal=auth-endpoint-app-password="$WSO2_AUTH_ENDPOINT_APP_PASSWORD"
+        --from-literal=auth-endpoint-app-password-sha256="{{.AUTH_ENDPOINT_HASH}}"
+        | kubectl apply -f -
+
+  render:
+    internal: true
+    requires:
+      vars: [WSO2_HOSTNAME]
+    cmds:
+      - mkdir -p {{.K8S_DIR}}/overlays/lab/generated
+      - envsubst '${WSO2_HOSTNAME}' < {{.K8S_DIR}}/base/deployment.toml > {{.K8S_DIR}}/overlays/lab/generated/deployment.toml
+
+  deploy:
+    desc: Apply the WSO2 IS, PostgreSQL and Mailpit manifests and wait for the rollout.
+    deps: [secrets, render]
+    cmds:
+      - kubectl kustomize {{.K8S_DIR}}/overlays/lab | envsubst '${WSO2_HOSTNAME}' | kubectl apply -f -
+      - cmd: kubectl -n {{.NAMESPACE}} wait certificate/wso2is-tls --for=condition=Ready --timeout=2m
+        timeout: 3m
+      - cmd: kubectl -n {{.NAMESPACE}} rollout status statefulset/postgres --timeout=5m
+        timeout: 6m
+      - cmd: kubectl -n {{.NAMESPACE}} rollout status deployment/wso2is --timeout=15m
+        timeout: 16m
+
+  wait:
+    desc: Wait until WSO2 IS answers on its public URL with a trusted certificate.
+    requires:
+      vars: [WSO2_HOSTNAME]
+    cmds:
+      - cmd: until curl -fsS -o /dev/null https://{{.WSO2_HOSTNAME}}/api/health-check/v1.0/health; do echo "waiting for https://{{.WSO2_HOSTNAME}}"; sleep 10; done
+        timeout: 15m
+      - echo "WSO2 IS is up at https://{{.WSO2_HOSTNAME}}/console"
+
+  status:
+    desc: Show the lab pods, certificates and ingress.
+    deps: [tunnel]
+    cmds:
+      - kubectl -n {{.NAMESPACE}} get pods,svc,ingress,certificate -o wide
+
+  logs:
+    desc: 'Follow the WSO2 IS logs. Example: task lab:logs -- --since=10m'
+    deps: [tunnel]
+    cmds:
+      - kubectl -n {{.NAMESPACE}} logs deploy/wso2is -c wso2is -f {{.CLI_ARGS}}
+
+  restart:
+    desc: Restart WSO2 IS and keep the database.
+    deps: [tunnel]
+    cmds:
+      - kubectl -n {{.NAMESPACE}} rollout restart deployment/wso2is
+      - kubectl -n {{.NAMESPACE}} rollout status deployment/wso2is --timeout=15m
+
+  reset:
+    desc: Delete the lab database and start WSO2 IS again from an empty one.
+    deps: [tunnel]
+    prompt: This deletes every WSO2 IS object in the lab database. Continue?
+    cmds:
+      - kubectl -n {{.NAMESPACE}} scale deployment/wso2is --replicas=0
+      - kubectl -n {{.NAMESPACE}} delete statefulset/postgres --wait
+      - kubectl -n {{.NAMESPACE}} delete pvc data-postgres-0 --wait
+      - task: deploy
+
+  mailpit:
+    desc: Show the mail WSO2 sent (Mailpit) on http://localhost:8025. Press Ctrl+C to stop.
+    deps: [tunnel]
+    vars:
+      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+      CLUSTER_IP:
+        sh: kubectl -n {{.NAMESPACE}} get service mailpit -o jsonpath='{.spec.clusterIP}'
+    cmds:
+      - echo "Mailpit is on http://localhost:8025 (press Ctrl+C to stop)"
+      - '{{.SSH}} -NT -L 8025:{{.CLUSTER_IP}}:8025 root@{{.LAB_HOST}}'
+
+  compat:
+    desc: 'Deploy older WSO2 IS versions (embedded H2) for compatibility tests. Example: task lab:compat VERSIONS="7.2.0"'
+    deps: [tunnel]
+    vars:
+      VERSIONS: '{{.VERSIONS | default "7.2.0"}}'
+    requires:
+      vars: [WSO2_ADMIN_PASSWORD]
+    cmds:
+      - kubectl create namespace wso2is-compat --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl -n wso2is-compat create secret generic wso2is-compat --from-literal=admin-password="$WSO2_ADMIN_PASSWORD" --dry-run=client -o yaml | kubectl apply -f -
+      - for: { var: VERSIONS }
+        cmd: >-
+          VERSION={{.ITEM}} NAME=wso2is-{{.ITEM | replace "." ""}}
+          envsubst '${VERSION} ${NAME}' < {{.K8S_DIR}}/compat/wso2is.yaml | kubectl apply -f -
+      - for: { var: VERSIONS }
+        cmd: kubectl -n wso2is-compat rollout status deploy/wso2is-{{.ITEM | replace "." ""}} --timeout=15m
+
+  compat:forward:
+    desc: 'Forward https://localhost:19<version> (for example 19720 for 7.2.0) to each compatibility server through SSH.'
+    deps: [tunnel]
+    vars:
+      VERSIONS: '{{.VERSIONS | default "7.2.0"}}'
+      LAB_HOST: '{{.LAB_SUBDOMAIN}}.{{.LAB_DNS_ZONE}}'
+    cmds:
+      - for: { var: VERSIONS }
+        cmd: >-
+          {{.SSH}} -fNT -o ExitOnForwardFailure=yes
+          -L 19{{.ITEM | replace "." ""}}:$(kubectl -n wso2is-compat get service wso2is-{{.ITEM | replace "." ""}} -o jsonpath='{.spec.clusterIP}'):9443
+          root@{{.LAB_HOST}} || true
+
+  compat:down:
+    desc: Remove the compatibility servers.
+    deps: [tunnel]
+    cmds:
+      - kubectl delete namespace wso2is-compat --ignore-not-found

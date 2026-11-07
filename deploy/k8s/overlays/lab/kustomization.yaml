@@ -1,0 +1,28 @@
+# Lab overlay: a single-node k3s cluster (deploy/hetzner) that publishes WSO2 through
+# its bundled Traefik ingress controller with a Let's Encrypt certificate.
+#
+# `task lab:deploy` renders generated/deployment.toml (the base file with
+# ${WSO2_HOSTNAME} filled in) and substitutes ${WSO2_HOSTNAME} in the output.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: wso2is
+resources:
+  - ../../base
+  - ingress.yaml
+patches:
+  # Tell Traefik to talk HTTPS to WSO2 and to verify it with the ServersTransport.
+  - target: { kind: Service, name: wso2is }
+    patch: |-
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: wso2is
+        annotations:
+          traefik.ingress.kubernetes.io/service.serversscheme: https
+          traefik.ingress.kubernetes.io/service.serverstransport: wso2is-wso2is@kubernetescrd
+# A changed deployment.toml changes the ConfigMap name, which rolls the pods.
+configMapGenerator:
+  - name: wso2is-config
+    behavior: replace
+    files:
+      - generated/deployment.toml

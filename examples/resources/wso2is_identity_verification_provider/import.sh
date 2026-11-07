@@ -1,0 +1,1 @@
+terraform import wso2is_identity_verification_provider.onfido <provider_id>

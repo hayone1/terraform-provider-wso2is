@@ -1,0 +1,1 @@
+terraform import wso2is_notification_template.account_confirmation_fr email/AccountConfirmation/fr_FR

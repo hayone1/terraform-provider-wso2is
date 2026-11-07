@@ -1,0 +1,1 @@
+terraform import wso2is_fraud_detection_configuration.this fraud_detection_configuration

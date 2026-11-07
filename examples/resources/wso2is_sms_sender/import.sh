@@ -1,0 +1,1 @@
+terraform import wso2is_sms_sender.twilio SMSPublisher

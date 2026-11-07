@@ -1,0 +1,1 @@
+terraform import wso2is_workflow_association.deletions <association_id>

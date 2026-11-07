@@ -1,0 +1,1 @@
+terraform import wso2is_governance_connector.account_lock account.lock.handler

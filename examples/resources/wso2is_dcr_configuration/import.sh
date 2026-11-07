@@ -1,0 +1,1 @@
+terraform import wso2is_dcr_configuration.this dcr_configuration

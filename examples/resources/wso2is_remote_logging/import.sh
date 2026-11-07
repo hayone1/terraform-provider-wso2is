@@ -1,0 +1,1 @@
+terraform import wso2is_remote_logging.audit AUDIT

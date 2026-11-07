@@ -1,0 +1,1 @@
+terraform import wso2is_cors_configuration.this cors_configuration

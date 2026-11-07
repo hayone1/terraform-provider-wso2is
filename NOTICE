@@ -1,0 +1,12 @@
+Terraform Provider for WSO2 Identity Server
+Copyright 2026 hayone1 and the terraform-provider-wso2is contributors
+
+This product includes software developed by hayone1 and the
+terraform-provider-wso2is contributors
+(https://github.com/hayone1/terraform-provider-wso2is).
+
+Under section 4(d) of the Apache License, Version 2.0, copies and derivative
+works must keep this NOTICE file (or its attribution notices) with them.
+
+WSO2 and WSO2 Identity Server are trademarks of WSO2 LLC. This project is an
+independent community project and is not affiliated with or endorsed by WSO2.

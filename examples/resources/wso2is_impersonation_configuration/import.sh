@@ -1,0 +1,1 @@
+terraform import wso2is_impersonation_configuration.this impersonation_configuration

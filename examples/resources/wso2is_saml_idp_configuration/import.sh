@@ -1,0 +1,1 @@
+terraform import wso2is_saml_idp_configuration.this saml_idp_configuration

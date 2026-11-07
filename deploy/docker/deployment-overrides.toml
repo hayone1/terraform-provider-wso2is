@@ -1,0 +1,13 @@
+
+# ---- Added by `task wso2:up` for the acceptance tests ----
+
+# Allow DELETE /api/server/v1/tenants/{id}/metadata so wso2is_tenant can remove tenants.
+[tenant_mgt]
+tenant_deletion = true
+
+# WSO2 IS 7.3.0 has no access control rule for deleting root organization flows.
+[[resource.access_control]]
+context = "(.*)/api/server/v1/flow(.*)"
+secure = true
+http_method = "DELETE"
+scopes = ["internal_flow_update"]

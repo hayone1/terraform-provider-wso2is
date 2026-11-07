@@ -1,0 +1,1 @@
+terraform import wso2is_inbound_provisioning_configuration.this inbound_provisioning_configuration

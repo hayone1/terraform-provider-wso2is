@@ -1,0 +1,87 @@
+# Single-instance PostgreSQL for the lab. WSO2 IS 7.3 supports PostgreSQL 15, 16 and 17.
+# Production setups should use a managed or operator-run cluster (for example CloudNativePG).
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+data:
+  # Runs once, on an empty data directory.
+  create-databases.sql: |
+    CREATE DATABASE "WSO2_IDENTITY_DB";
+    CREATE DATABASE "WSO2_SHARED_DB";
+    CREATE DATABASE "WSO2_AGENT_IDENTITY_DB";
+    -- Secondary JDBC user store used by the provider's acceptance tests.
+    CREATE DATABASE "WSO2_TEST_USERSTORE_DB";
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+    spec:
+      # Run as the postgres user (uid 999 in the official image), so the entrypoint
+      # does not need root to switch users.
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:17
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef: { name: wso2is-credentials, key: db-username }
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: wso2is-credentials, key: db-password }
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+              name: postgres
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\""]
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 1Gi }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init
+          configMap:
+            name: postgres-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi

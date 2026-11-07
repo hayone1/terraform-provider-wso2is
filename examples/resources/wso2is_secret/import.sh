@@ -1,0 +1,1 @@
+terraform import wso2is_secret.risk_api_key ADAPTIVE_AUTH_CALL_CHOREO/risk_api_key

@@ -1,0 +1,1 @@
+terraform import wso2is_custom_authenticator.branch_pin custom-branch-pin

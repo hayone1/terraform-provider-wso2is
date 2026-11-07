@@ -1,0 +1,1 @@
+terraform import wso2is_notification_template_type.contract_ready email/ContractReady

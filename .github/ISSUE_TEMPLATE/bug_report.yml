@@ -1,0 +1,77 @@
+name: Bug report
+description: The provider does something wrong (an error, a crash, a perpetual diff, a wrong value).
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please check [Known server behaviour and limitations](https://github.com/hayone1/terraform-provider-wso2is/blob/main/docs/guides/server-behaviour.md) first: some problems come from the server.
+  - type: input
+    id: provider-version
+    attributes:
+      label: Provider version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: wso2-version
+    attributes:
+      label: WSO2 Identity Server version
+      description: Including the update level if you know it.
+      placeholder: 7.3.0
+    validations:
+      required: true
+  - type: input
+    id: terraform-version
+    attributes:
+      label: Terraform or OpenTofu version
+      placeholder: 1.14.0
+    validations:
+      required: true
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Provider authentication
+      options:
+        - Basic authentication
+        - Client credentials
+        - Client credentials with organization_id
+        - Access token
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: The smallest configuration that shows the problem. Remove secrets.
+      render: terraform
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The full error or plan output.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: debug
+    attributes:
+      label: Debug output (optional)
+      description: |
+        `TF_LOG=TRACE terraform apply` logs every API request and response (secrets are redacted, but check before posting). Attach the relevant part or a gist link.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. terraform apply
+        2. change X
+        3. terraform plan shows ...

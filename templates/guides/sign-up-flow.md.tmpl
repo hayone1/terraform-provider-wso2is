@@ -1,0 +1,94 @@
+---
+page_title: "Custom registration (sign-up) flow"
+subcategory: ""
+description: |-
+  Add your own fields to the self sign-up page with a registration flow, a custom attribute (claim) and an OIDC scope.
+---
+
+# Custom registration (sign-up) flow
+
+WSO2 Identity Server 7.3 builds its self sign-up page from a **registration flow**. A flow is a
+graph of steps. Some steps are **views**, which show a form to the user. Other steps run
+**executors**, which do work on the server, such as creating the user. In the Console, you edit
+this graph with the flow builder. With Terraform, you manage the same graph with `wso2is_flow`.
+This lets you keep your sign-up form in version control.
+
+In this guide, you add a required *membership number* field to the sign-up form. You then:
+
+1. store the membership number on the user as a custom attribute
+2. show the attribute in the SCIM user APIs and in My Account
+3. release the attribute in ID tokens through a new `membership` scope
+
+## The complete example
+
+{{ tffile "examples/guides/sign-up/main.tf" }}
+
+## How the parts fit together
+
+**Form fields.** Each field is an `INPUT` component inside a `FORM` block. The field's
+`config.identifier` names the place where the server stores the value. For most fields, this is
+a local claim URI, such as `http://wso2.org/claims/emailaddress`. For the password field, the
+identifier is `password`.
+
+**The submit button.** The button runs the `PasswordProvisioningExecutor`, and then moves to the
+`END` step. The `END` step runs the `UserProvisioningExecutor`, which creates the user.
+
+**The custom attribute.** A new attribute needs two claims:
+
+* a **local claim** that maps the attribute to a column in the user store, and
+* a mapping in the `urn:scim:schemas:extension:custom:User` SCIM dialect, so that the user APIs
+  return the attribute.
+
+If the server does not have the custom SCIM dialect yet, `wso2is_external_claim` creates it.
+
+**The "Create an account" link.** While the flow is enabled, the hosted login page shows a "Create
+an account" link. The link opens `/accounts/register?flowType=REGISTRATION`. The Console
+application does not show the link. The older `self-sign-up` governance connector does not control
+this page.
+
+**What happens after sign-up.** `completion_configs` controls what happens after a user signs up.
+The available settings are `isAutoLoginEnabled`, `isEmailVerificationEnabled`,
+`isAccountLockOnCreationEnabled` and `isFlowCompletionNotificationEnabled`. Email verification and
+notifications only work after you set up an email provider.
+
+## Design the flow in the Console first
+
+Writing the flow's JSON by hand takes time. It is often faster to design the flow in the
+Console's flow builder, and then copy the result into Terraform:
+
+1. Design and save the flow in the Console.
+2. Read the flow with a data source and print it:
+
+   ```terraform
+   data "wso2is_flow" "designed" {
+     flow_type = "REGISTRATION"
+   }
+
+   output "registration_flow" {
+     value = data.wso2is_flow.designed.steps
+   }
+   ```
+
+3. Save the output to a file:
+
+   ```shell
+   terraform output -raw registration_flow > registration-flow.json
+   ```
+
+4. Use the file in your `wso2is_flow` resource with `steps = file("registration-flow.json")`.
+
+The provider compares flows by their content. A different key order or different formatting does
+not show up as a change in the plan.
+
+## Other flows
+
+`flow_type` also accepts `PASSWORD_RECOVERY` and `INVITED_USER_REGISTRATION`. You build these flows
+in the same way.
+
+## Limitations
+
+* Each tenant (or organization) has exactly one flow of each type.
+* By default, WSO2 IS 7.3.0 does not allow the API to delete a flow. When you destroy
+  `wso2is_flow`, the provider turns the flow off instead and shows a warning. To allow deletion,
+  change `deployment.toml` as described in
+  [Known server behaviour](server-behaviour#flows).

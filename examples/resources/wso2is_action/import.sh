@@ -1,0 +1,1 @@
+terraform import wso2is_action.token_claims pre_issue_access_token/<action_id>

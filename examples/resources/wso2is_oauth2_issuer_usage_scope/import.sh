@@ -1,0 +1,1 @@
+terraform import wso2is_oauth2_issuer_usage_scope.this oauth2_issuer_usage_scope

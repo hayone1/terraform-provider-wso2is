@@ -1,0 +1,41 @@
+name: Server behaviour
+description: The WSO2 Identity Server API behaves unexpectedly (wrong status, ignored field, undocumented requirement) and the provider should handle or document it.
+labels: [server-behaviour]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These reports end up in `contributing/wso2-api-behaviour.md` and often in a provider fix. The request and response that show the behaviour are what matters most; `TF_LOG=TRACE` prints them.
+  - type: input
+    id: wso2-version
+    attributes:
+      label: WSO2 Identity Server version
+      placeholder: 7.3.0
+    validations:
+      required: true
+  - type: input
+    id: api
+    attributes:
+      label: API and endpoint
+      placeholder: PATCH /api/server/v1/applications/{id}
+    validations:
+      required: true
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: What the server does
+      description: And what you expected it to do according to the API documentation or the Console.
+    validations:
+      required: true
+  - type: textarea
+    id: exchange
+    attributes:
+      label: Request and response
+      description: Remove secrets and host names you do not want to share.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround (optional)

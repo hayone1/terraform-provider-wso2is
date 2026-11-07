@@ -1,0 +1,69 @@
+name: Acceptance
+
+# Runs the acceptance tests against WSO2 Identity Server in Docker on the runner,
+# once with Terraform and once with OpenTofu.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: 'WSO2 Identity Server versions (JSON list)'
+        default: '["7.3.0"]'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    name: WSO2 IS ${{ matrix.wso2 }} (${{ matrix.cli }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        wso2: ${{ fromJSON(github.event.inputs.versions || '["7.3.0"]') }}
+        cli: [terraform, tofu]
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: hashicorp/setup-terraform@v3
+        if: matrix.cli == 'terraform'
+        with:
+          terraform_wrapper: false
+      - uses: opentofu/setup-opentofu@v1
+        if: matrix.cli == 'tofu'
+        with:
+          tofu_wrapper: false
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      # Optional: authenticated pulls avoid Docker Hub's anonymous rate limit.
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Start WSO2 Identity Server
+        run: task wso2:up WSO2_VERSION=${{ matrix.wso2 }}
+      - name: Acceptance tests
+        run: task testacc:local TF_CLI=${{ matrix.cli }} -- -p 1 ./...
+      - name: Server logs
+        if: failure()
+        run: docker logs --tail 500 wso2is-${{ matrix.wso2 }}
+      - name: Sweep leftovers
+        if: always()
+        run: task --yes sweep BASE_URL=https://localhost:9443 USERNAME=admin PASSWORD=admin INSECURE=true

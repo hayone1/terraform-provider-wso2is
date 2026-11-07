@@ -1,0 +1,1 @@
+terraform import wso2is_push_sender.fcm FCM_PushPublisher

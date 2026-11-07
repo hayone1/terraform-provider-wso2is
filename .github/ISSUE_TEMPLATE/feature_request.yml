@@ -1,0 +1,28 @@
+name: Feature request
+description: A resource, data source, attribute or behaviour the provider should support.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you want to manage
+      description: The WSO2 Identity Server feature, ideally with the Console screen or the management API it uses.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: The use case. It helps decide how the resource should look.
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: How you would like to write it (optional)
+      render: terraform
+  - type: input
+    id: wso2-version
+    attributes:
+      label: WSO2 Identity Server version
+      placeholder: 7.3.0

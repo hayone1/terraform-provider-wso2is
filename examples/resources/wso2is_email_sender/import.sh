@@ -1,0 +1,1 @@
+terraform import wso2is_email_sender.smtp EmailPublisher

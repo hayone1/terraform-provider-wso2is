@@ -1,0 +1,1 @@
+terraform import wso2is_oauth2_configuration.this oauth2_configuration

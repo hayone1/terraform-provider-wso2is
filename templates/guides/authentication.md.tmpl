@@ -1,0 +1,102 @@
+---
+page_title: "Authentication: an application for Terraform"
+subcategory: ""
+description: |-
+  Create an M2M application for Terraform, so Terraform no longer needs an administrator password, and choose which management APIs it can call.
+---
+
+# Authentication: an application for Terraform
+
+The provider can sign in with an administrator's username and password. That is the easiest way
+to get started, but it is not a good fit for automation:
+
+* The administrator account can do everything on the server.
+* Changing the password breaks every pipeline that uses it.
+* The password belongs to a person, not to a pipeline.
+
+A better choice is an **M2M (machine-to-machine) application** that uses the OAuth2 **client
+credentials** grant. The application can only call the management APIs that you allow. You can
+also replace its secret without changing any user account.
+
+In this guide, you create that application with Terraform. You do this once, with administrator
+credentials. After that, your other configurations use the application's client ID and secret.
+
+## Step 1: Write the bootstrap configuration
+
+Save this file as `main.tf` in a new folder. It creates the application and allows it to call the
+management APIs that the provider uses.
+
+{{ tffile "examples/guides/bootstrap/main.tf" }}
+
+The list in `management_apis` covers every resource of the provider. If you only manage a few
+resources, you can remove the APIs that you do not need. The application then has fewer
+permissions.
+
+## Step 2: Apply it with administrator credentials
+
+Run these commands. Replace the URL and password with your own values.
+
+```shell
+export WSO2IS_BASE_URL=https://id.example.com
+export WSO2IS_USERNAME=admin
+export WSO2IS_PASSWORD='your-admin-password'
+terraform init
+terraform apply
+```
+
+## Step 3: Switch to the application's credentials
+
+Read the client ID and secret from the outputs. Then remove the administrator credentials from
+your shell:
+
+```shell
+export WSO2IS_CLIENT_ID=$(terraform output -raw client_id)
+export WSO2IS_CLIENT_SECRET=$(terraform output -raw client_secret)
+unset WSO2IS_USERNAME WSO2IS_PASSWORD
+```
+
+Your other configurations can now use an empty provider block. The provider reads the URL and the
+credentials from the environment variables.
+
+```terraform
+provider "wso2is" {}
+```
+
+In a CI/CD pipeline, store `WSO2IS_CLIENT_ID` and `WSO2IS_CLIENT_SECRET` as pipeline secrets.
+
+The bootstrap configuration's state file contains the client secret. Store that state somewhere
+safe, such as an encrypted remote backend.
+
+## How scopes work
+
+A **scope** is a named permission, such as `internal_user_mgt_create`. When the provider signs in
+with client credentials, it asks for the `SYSTEM` scope. The server replaces `SYSTEM` with every
+scope that the application is allowed to use. So the APIs that you authorize in Step 1 decide what
+Terraform can do.
+
+You only need to set `scopes` (or `WSO2IS_SCOPES`) if you want to ask for fewer scopes than the
+application is allowed to use.
+
+If the application is not allowed to call an API, the resources that use that API fail with
+HTTP 403. To fix this, add the API to the application:
+
+* In the Console, open the application and go to the **API Authorization** tab.
+* With Terraform, look up the API with the `wso2is_api_resource` data source and add a
+  `wso2is_application_authorized_api` resource for it.
+
+## What client credentials cannot do
+
+* **Create tenants.** The server fails when it creates a tenant with a client credentials token.
+  Use basic authentication with the super tenant's administrator for `wso2is_tenant`.
+* **Manage organizations on their own.** The application also needs the `organization_switch`
+  grant, and you must share it with each organization. The [Organizations guide](organizations)
+  explains the setup.
+* **Manage other tenants.** An application belongs to one tenant. To manage another tenant, create
+  an application inside that tenant, or use that tenant's administrator.
+
+## Access tokens from your own tooling
+
+You can also give the provider a token directly with `access_token` (or `WSO2IS_ACCESS_TOKEN`).
+The provider sends the token as it is. It cannot refresh the token, so the token must stay valid
+until Terraform finishes. To manage a sub-organization this way, the token must be issued for that
+organization.
