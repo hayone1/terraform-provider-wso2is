@@ -58,11 +58,15 @@ func ExternalProviders(t *testing.T) map[string]resource.ExternalProvider {
 		t.Fatalf("locating the module: %s", err)
 	}
 	mirror := t.TempDir()
-	target := filepath.Join(mirror, "registry.terraform.io", "hayone1", "wso2is", version, runtime.GOOS+"_"+runtime.GOARCH)
-	build := exec.Command("go", "build", "-o", filepath.Join(target, "terraform-provider-wso2is_v"+version), ".")
-	build.Dir = strings.TrimSpace(string(root))
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("building the provider: %s\n%s", err, out)
+	// Terraform resolves "hayone1/wso2is" to registry.terraform.io, OpenTofu to
+	// registry.opentofu.org: put the binary under both hosts.
+	for _, host := range []string{"registry.terraform.io", "registry.opentofu.org"} {
+		target := filepath.Join(mirror, host, "hayone1", "wso2is", version, runtime.GOOS+"_"+runtime.GOARCH)
+		build := exec.Command("go", "build", "-o", filepath.Join(target, "terraform-provider-wso2is_v"+version), ".")
+		build.Dir = strings.TrimSpace(string(root))
+		if out, err := build.CombinedOutput(); err != nil {
+			t.Fatalf("building the provider: %s\n%s", err, out)
+		}
 	}
 	rc := filepath.Join(mirror, "terraformrc")
 	cfg := fmt.Sprintf(`provider_installation {

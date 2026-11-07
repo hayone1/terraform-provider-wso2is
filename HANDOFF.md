@@ -23,8 +23,8 @@ release signing key and publishing guide.
   the Step 5 change plans one update, and destroy removes everything. This check found that
   `.gitignore` excluded `internal/service/idp/testdata/cert.pem` (fixed).
 * `task release:snapshot` builds all 13 platform archives, the checksums and the manifest.
-* The repository has **no commits** yet, and the GitHub repository does not exist. Publishing is
-  for the maintainer to do; the steps are in [RELEASING.md](RELEASING.md).
+* Pushed to https://github.com/hayone1/terraform-provider-wso2is (public). Release secrets are
+  uploaded. The maintainer only does the registry steps in [RELEASING.md](RELEASING.md).
 
 ## Environment
 
@@ -38,7 +38,7 @@ release signing key and publishing guide.
     `task lab:up` recreates everything in about ten minutes.
 * **Secrets** live in `.env` (git-ignored): `HCLOUD_TOKEN`, the `WSO2_*` passwords, the test
   JDBC settings, and the release signing key (`GPG_FINGERPRINT`, `PASSPHRASE`,
-  `GPG_PRIVATE_KEY`). The signing key is also in the maintainer's local GPG keyring.
+  `GPG_PRIVATE_KEY`). The signing key is also in `.secrets/` (git-ignored files: private key, public key, passphrase) and in the maintainer's local GPG keyring.
   `_debug/env.backup-2026-11-07` is a backup of the old `.env` (old lab keys); delete it once
   the maintainer has confirmed that nothing is missing.
 * **Release key**: RSA 4096, fingerprint `9FBCFD28D9601DD6020039ACA4832BD8A7ED2400`, expires

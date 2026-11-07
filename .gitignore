@@ -47,3 +47,6 @@ deploy/k8s/overlays/*/generated/
 
 # Claude Code personal settings (the skills in .claude/skills are shared)
 .claude/settings.local.json
+
+# Local secret files (release signing key, see RELEASING.md)
+.secrets/

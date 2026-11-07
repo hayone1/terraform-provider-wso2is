@@ -29,7 +29,7 @@ A key already exists for this repository:
 * Type: RSA 4096, signing only. It expires on 2029-11-06.
 * User ID: `Boluwatife Morawo (terraform-provider-wso2is release signing) <28967086+hayone1@users.noreply.github.com>`
 
-The private key and its passphrase are in the maintainer's `.env` file (`GPG_PRIVATE_KEY`,
+The private key and its passphrase are in the maintainer's git-ignored `.secrets/` folder, in the `.env` file (`GPG_PRIVATE_KEY`,
 `PASSPHRASE` and `GPG_FINGERPRINT`) and in the maintainer's local GPG keyring. Keep a backup of
 `.env` in a password manager. If you lose the private key, you must create a new key and register
 it with both registries again.
