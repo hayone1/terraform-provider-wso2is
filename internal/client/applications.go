@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // Application is the application model used for create, read and patch. Pointer and
@@ -263,9 +264,42 @@ func (c *Client) GetApplication(ctx context.Context, id string) (*Application, e
 // authorized-apis answers 400 APP-60001 ("does not belong to the tenant domain"),
 // share answers 200 with no organizations, and shared-apps answers 400 ORG-60035.
 // Callers use this to tell a deleted application from a real error.
+//
+// After a delete, the server keeps answering GET /applications/{id} with the old
+// application for about 15 minutes (a cache), while the endpoints below the application
+// already know that it is gone. When GET still finds the application, the authorized-apis
+// endpoint decides.
 func (c *Client) ApplicationMissing(ctx context.Context, appID string) bool {
 	_, err := c.GetApplication(ctx, appID)
-	return IsNotFound(err)
+	if IsNotFound(err) {
+		return true
+	}
+	if err != nil {
+		return false
+	}
+	_, err = c.ListAuthorizedAPIs(ctx, appID)
+	return applicationNotInTenant(err)
+}
+
+// ApplicationGone reports whether err, which an endpoint below the application appID
+// returned, means that the application does not exist. The answers that only a missing
+// application gives are checked first, because GET /applications/{id} can still find a
+// deleted application (see ApplicationMissing).
+func (c *Client) ApplicationGone(ctx context.Context, appID string, err error) bool {
+	if err == nil {
+		return false
+	}
+	if IsNotFound(err) || applicationNotInTenant(err) || HasCode(err, "ORG-60035") {
+		return true
+	}
+	return c.ApplicationMissing(ctx, appID)
+}
+
+// applicationNotInTenant reports whether err is the server's answer for an application that
+// is not in the tenant: 400 APP-60001 "Application does not belong to the tenant domain".
+// APP-60001 alone also covers other failures, so the message decides.
+func applicationNotInTenant(err error) bool {
+	return HasCode(err, "APP-60001") && strings.Contains(err.Error(), "does not belong to the tenant domain")
 }
 
 // PatchApplication updates the fields set in patch.

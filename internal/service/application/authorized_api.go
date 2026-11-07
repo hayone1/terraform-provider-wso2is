@@ -161,7 +161,7 @@ func (r *authorizedAPIResource) Delete(ctx context.Context, req resource.DeleteR
 		return
 	}
 	err := r.client.RevokeAPI(ctx, state.ApplicationID.ValueString(), state.APIResourceID.ValueString())
-	if err == nil || client.IsNotFound(err) {
+	if err == nil || r.client.ApplicationGone(ctx, state.ApplicationID.ValueString(), err) {
 		return
 	}
 	// The server answers 400 when the application is gone and 500 when the API resource
@@ -187,7 +187,7 @@ func (r *authorizedAPIResource) ImportState(ctx context.Context, req resource.Im
 func (r *authorizedAPIResource) read(ctx context.Context, m *authorizedAPIModel, diags *diag.Diagnostics) bool {
 	apis, err := r.client.ListAuthorizedAPIs(ctx, m.ApplicationID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) || r.client.ApplicationMissing(ctx, m.ApplicationID.ValueString()) {
+		if r.client.ApplicationGone(ctx, m.ApplicationID.ValueString(), err) {
 			return false
 		}
 		tfutil.AddAPIError(diags, "read authorized APIs", err)

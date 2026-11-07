@@ -9,6 +9,10 @@ BUG FIXES:
   with an empty ID before it creates it. Some resources answered with an object (for example
   applications, users and roles), so Crossplane treated the new object as existing and never
   created it. Other resources failed with an error from the server.
+* `wso2is_application_authorized_api` and `wso2is_application_share`: deleting or reading them
+  right after their application was deleted failed for about 15 minutes. The server keeps
+  answering `GET /applications/{id}` for a deleted application during that time, so the
+  provider now also asks an endpoint below the application.
 
 ## 0.1.1 (2026-11-07)
 

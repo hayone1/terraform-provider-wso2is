@@ -417,7 +417,7 @@ func (r *shareResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		return
 	}
 	err := r.client.UnshareApplicationAll(ctx, state.ApplicationID.ValueString())
-	if err != nil && !client.IsNotFound(err) && !r.client.ApplicationMissing(ctx, state.ApplicationID.ValueString()) {
+	if err != nil && !r.client.ApplicationGone(ctx, state.ApplicationID.ValueString(), err) {
 		tfutil.AddAPIError(&resp.Diagnostics, "stop sharing application", err)
 	}
 }
