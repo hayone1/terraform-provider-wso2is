@@ -148,6 +148,10 @@ func (r *templateResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 	// ID: <channel>/<type>/<locale>[/<application_id>].
 	if parts := tfutil.IDParts(state.ID, 3); parts != nil {
 		tfutil.SetStringIfNull(&state.Channel, parts[0])
@@ -287,6 +291,10 @@ func (r *templateTypeResource) Read(ctx context.Context, req resource.ReadReques
 	var state templateTypeModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 	if _, err := r.client.GetTemplateType(ctx, state.Channel.ValueString(), state.Name.ValueString()); err != nil {

@@ -173,6 +173,13 @@ func (r *preferenceResource) Create(ctx context.Context, req resource.CreateRequ
 func (r *preferenceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state preferenceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 	fillTargetFromID(state.ID, &state.Type, &state.ApplicationID, &state.Locale, nil)
 	t := resolveTarget(r.client, state.Type, state.ApplicationID, state.Locale, types.StringNull(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -336,6 +343,13 @@ func (r *textResource) Create(ctx context.Context, req resource.CreateRequest, r
 func (r *textResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state textModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 	fillTargetFromID(state.ID, &state.Type, &state.ApplicationID, &state.Locale, &state.Screen)
 	t := resolveTarget(r.client, state.Type, state.ApplicationID, state.Locale, state.Screen, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {

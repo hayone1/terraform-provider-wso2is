@@ -158,6 +158,10 @@ func (r *emailSenderResource) Read(ctx context.Context, req resource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 	if !r.read(ctx, &state, &resp.Diagnostics) {
 		if !resp.Diagnostics.HasError() {
 			resp.State.RemoveResource(ctx)
@@ -370,6 +374,10 @@ func (r *smsSenderResource) Read(ctx context.Context, req resource.ReadRequest, 
 	var state smsSenderModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 	if !r.read(ctx, &state, &resp.Diagnostics) {

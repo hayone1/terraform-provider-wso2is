@@ -89,6 +89,10 @@ func (r *dialectResource) Read(ctx context.Context, req resource.ReadRequest, re
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 	d, err := r.client.GetClaimDialect(ctx, state.ID.ValueString())
 	if err != nil {
 		if client.IsNotFound(err) {
@@ -204,6 +208,10 @@ func (r *externalClaimResource) Read(ctx context.Context, req resource.ReadReque
 	var state externalClaimModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 	dialectID, claimID, _ := strings.Cut(state.ID.ValueString(), "/")
@@ -345,6 +353,10 @@ func (r *oidcScopeResource) Read(ctx context.Context, req resource.ReadRequest, 
 	var state oidcScopeModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 	if !r.read(ctx, &state, &resp.Diagnostics) {

@@ -103,6 +103,10 @@ func (r *connectorResource) Read(ctx context.Context, req resource.ReadRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 	if state.CategoryID.ValueString() == "" {
 		// The prior state can hold only the ID and the arguments (see tfutil.SetStringIfNull).
 		cat, id, err := r.client.FindGovernanceConnector(ctx, state.ID.ValueString())

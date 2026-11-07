@@ -154,6 +154,10 @@ func (r *workflowResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 	if !r.read(ctx, &state, &resp.Diagnostics) {
 		if !resp.Diagnostics.HasError() {
 			resp.State.RemoveResource(ctx)
@@ -368,6 +372,10 @@ func (r *associationResource) Read(ctx context.Context, req resource.ReadRequest
 	var state associationModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 	if !r.read(ctx, &state, &resp.Diagnostics) {

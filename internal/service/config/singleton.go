@@ -301,6 +301,15 @@ func (r *singletonResource) Update(ctx context.Context, req resource.UpdateReque
 }
 
 func (r *singletonResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var id types.String
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &id)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if tfutil.MissingID(id) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 	src := tfsdk.Plan{Schema: req.State.Schema, Raw: req.State.Raw}
 	r.read(ctx, src, &resp.State, &resp.Diagnostics)
 }

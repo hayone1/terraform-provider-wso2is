@@ -11,6 +11,15 @@ import (
 // empty: Terraform after an import, and Crossplane's Upjet, which runs this provider for
 // Crossplane. The helpers below fill such attributes, usually from the parts of the ID.
 
+// MissingID reports whether a prior state has no ID. Terraform never reads an object
+// without an ID, but Upjet does: before it creates an object whose ID the server assigns,
+// it reads the object with an empty ID. Read must then report the object as missing,
+// without calling the server. Otherwise Crossplane treats the object as existing and
+// never creates it.
+func MissingID(id types.String) bool {
+	return id.IsNull() || id.IsUnknown() || id.ValueString() == ""
+}
+
 // SetStringIfNull sets v to s when v is null or unknown.
 func SetStringIfNull(v *types.String, s string) {
 	if v.IsNull() || v.IsUnknown() {

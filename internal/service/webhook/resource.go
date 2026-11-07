@@ -122,6 +122,10 @@ func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if tfutil.MissingID(state.ID) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 	if !r.read(ctx, &state, &resp.Diagnostics) {
 		if !resp.Diagnostics.HasError() {
 			resp.State.RemoveResource(ctx)

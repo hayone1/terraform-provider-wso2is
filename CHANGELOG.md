@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+BUG FIXES:
+
+* All resources: reading an object with an empty or missing ID now reports the object as missing,
+  without calling the server. Terraform never does this, but Crossplane's Upjet reads an object
+  with an empty ID before it creates it. Some resources answered with an object (for example
+  applications, users and roles), so Crossplane treated the new object as existing and never
+  created it. Other resources failed with an error from the server.
+
 ## 0.1.1 (2026-11-07)
 
 This release prepares the provider for use inside other programs, such as a Crossplane provider
