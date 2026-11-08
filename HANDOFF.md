@@ -5,14 +5,14 @@ before you stop (see the `session-handoff` skill). Never put secret values here.
 
 ## Last updated
 
-2026-11-07 (third session, from the Crossplane provider): the branch `fix/read-without-id` has
-five local commits (four changes and this note) that are **not pushed and not released**: reads without an ID report "not
-found" (`tfutil.MissingID`, `internal/provider/emptyid_test.go`); the User Sharing API v2 quirk
-is documented; deleted applications that the server still caches are noticed
+2026-11-08 (fourth session, from the Crossplane provider): **v0.1.2 is released** (tag on
+`a1ec1c7`, fast-forward of the branch `fix/read-without-id` into `main`). It contains the four
+fixes found by the Crossplane provider: reads without an ID report "not found"
+(`tfutil.MissingID`, `internal/provider/emptyid_test.go`); the User Sharing API v2 quirk is
+documented; deleted applications that the server still caches are noticed
 (`client.ApplicationGone`); and member lists of a group or role that just disappeared delete
-cleanly (`internal/provider/deleteparent_test.go`). Unit tests, `task lint` and the identity,
-application and organization acceptance tests pass on the lab. Next: with the maintainer's
-approval, merge, release v0.1.2, and bump the Crossplane provider.
+cleanly (`internal/provider/deleteparent_test.go`). CI and Acceptance passed on `main` before the
+tag, and the Release workflow published 13 archives, the signed checksums and the manifest.
 
 Earlier:
 
@@ -39,6 +39,7 @@ lab was recreated and is running. The Crossplane provider is a separate project 
 * `task release:snapshot` builds all 13 platform archives, the checksums and the manifest.
 * Public repository: https://github.com/hayone1/terraform-provider-wso2is. CI and Acceptance
   (Terraform and OpenTofu jobs) pass on `main`. The five Dependabot action bumps are merged.
+* **v0.1.2 is released** (2026-11-08, tag on `a1ec1c7`). The Crossplane provider uses it.
 * **v0.1.1 is released** (2026-11-07, tag on `1c868f2`): 13 archives, signed checksums and the
   manifest; signature verified with the release key. The Go proxy and registry.terraform.io
   serve it. CI and Acceptance (Terraform and OpenTofu) passed on that commit. v0.1.0 was
