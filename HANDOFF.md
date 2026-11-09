@@ -48,11 +48,11 @@ lab was recreated and is running. The Crossplane provider is a separate project 
 
 ## Environment
 
-* **Hetzner lab: running** since 2026-11-07 (recreated for the Upjet work, IP 2.31.91.77). It is
-  a `cpx32` (4 vCPU, 8 GB, about EUR 42 a month) in `nbg1`, Ubuntu 24.04, k3s, WSO2 at
-  <https://wso2is.lab.software-cloud.com>. The Crossplane project uses it for its tests (its
-  `.env` has the admin credentials). `task lab:destroy` deletes it; ask the maintainer first.
-  `task lab:up -- -auto-approve` recreates it in about ten minutes. Without it, use
+* **Hetzner lab: destroyed** on 2026-11-09 (`task lab:destroy`, 7 resources; the user asked for
+  it after the Crossplane provider was published). It was a `cpx32` (4 vCPU, 8 GB, about EUR 42
+  a month) in `nbg1`, Ubuntu 24.04, k3s, WSO2 at <https://wso2is.lab.software-cloud.com>.
+  `task lab:up -- -auto-approve` recreates it in about ten minutes (ask the maintainer first: it
+  costs money). A new lab gets a new admin password, so update the Crossplane project's `.env`. Without it, use
   `task wso2:up` (Docker).
 * **Secrets** live in `.env` (git-ignored): `HCLOUD_TOKEN`, the `WSO2_*` passwords, the test
   JDBC settings, and the release signing key (`GPG_FINGERPRINT`, `PASSPHRASE`,
@@ -103,7 +103,6 @@ rewrote the docs, and added `RELEASING.md`, `HANDOFF.md` and the `session-handof
    key is not registered for the whole `hayone1` namespace). See RELEASING.md step 5.
 2. Crossplane provider: built in `/home/hayone/github/crossplane-provider-wso2is`. Fix Terraform
    provider bugs that it finds here, with tests, and release a new version.
-3. Destroy the lab (`task lab:destroy`) when the Crossplane work no longer needs it.
 
 ## Known problems
 
