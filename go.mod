@@ -3,7 +3,7 @@ module github.com/hayone1/terraform-provider-wso2is
 go 1.25.8
 
 require (
-	github.com/hashicorp/terraform-json v0.27.3-0.20260213134036-298b8f6b673a
+	github.com/hashicorp/terraform-json v0.29.0
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
 	github.com/hashicorp/terraform-plugin-framework-jsontypes v0.2.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
