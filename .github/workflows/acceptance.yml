@@ -46,7 +46,7 @@ jobs:
         if: matrix.cli == 'tofu'
         with:
           tofu_wrapper: false
-      - uses: arduino/setup-task@v2
+      - uses: arduino/setup-task@v3
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
